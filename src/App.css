@@ -1450,6 +1450,16 @@ body {
     min-width: 100%;
     max-width: none;
   }
+
+  /* On mobile the gear/account wrap to the left, so open their popovers to the
+     RIGHT (left-anchored) and clamp width to the viewport — otherwise a
+     right-anchored panel spills off the left edge. */
+  .settings-panel,
+  .account-menu {
+    right: auto;
+    left: 0;
+    width: min(260px, calc(100vw - 24px));
+  }
   .filters {
     padding: 0.8rem 1rem 0;
     gap: 0.4rem;
