@@ -493,6 +493,18 @@ Post-roadmap enhancement pass — **15 features (A–O)**, all lint-clean + buil
   (`.claude/`, `.env`, `*.zip`); excluded `node_modules`/`dist`. README rewritten
   to describe the data source generically as "multiple anime APIs" (no provider
   names), with current features/run/endpoints. Repo description + topics set.
+- 🚀 **Deployed to Firebase Hosting** (free Spark plan) at
+  **https://bloodfang-animebox.web.app**. Since Firebase Hosting serves static
+  files only, added a **browser-side AniList data layer** (`src/anilist-direct.js`)
+  used when built with `VITE_DATA_MODE=direct` (`.env.static`, `npm run build:static`)
+  so the app runs with no Express backend — `api.js` branches on the flag; local
+  `npm run prod` is unchanged. Config: `firebase.json` (SPA rewrites, public=dist)
+  + `.firebaserc`. Trade-off in the hosted build: no HiAnime dub auto-detect
+  (defaults to offering Dub). Playback depends on whether the embed providers
+  allow the `web.app` domain; everything else works. Custom domain (e.g.
+  bloodfang.com) deferred — taken/parked; free `.web.app` kept for now.
+  Note: a duplicate first-deploy project `bloodfang-fca0a` exists and is to be
+  deleted in the console (CLI has no project-delete).
 
 ---
 
