@@ -1,7 +1,7 @@
 // BloodFang service worker — a minimal offline app shell for the installable
 // PWA. Never touches the API or cross-origin sources (AniList / embed players);
 // only caches the built app so it opens instantly and works offline-ish.
-const CACHE = 'bloodfang-v1'
+const CACHE = 'bloodfang-v2'
 const SHELL = ['/', '/index.html', '/favicon.svg', '/manifest.webmanifest']
 
 self.addEventListener('install', (e) => {

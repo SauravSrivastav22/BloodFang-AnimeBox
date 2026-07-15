@@ -23,11 +23,8 @@ const SERVERS = [
     label: 'VidLink',
     url: ({ anilist, ep, type }) => `https://vidlink.pro/anime/${anilist}/${ep}/${type}`,
   },
-  {
-    key: 'vidsrc',
-    label: 'VidSrc',
-    url: ({ anilist, ep, type }) => `https://vidsrc.cc/v2/embed/anime/${anilist}/${ep}/${type}`,
-  },
+  // NOTE: VidSrc (vidsrc.cc) was removed — it was consistently down (522/timeout).
+  // Add a replacement here if a reliable AniList-id embed provider is found.
 ]
 
 // Remember the server that last played so it's the default next time.

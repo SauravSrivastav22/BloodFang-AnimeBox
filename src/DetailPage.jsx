@@ -221,7 +221,12 @@ export default function DetailPage({ id, onBack, onOpen, startEpisode = null, on
   // aired episode via nextAiringEpisode, else however many rich episodes we have.
   const airedCount = info.nextAiringEpisode ? info.nextAiringEpisode - 1 : 0
   const knownCount = info.totalEpisodes || info.currentEpisode || airedCount || 0
-  const totalEps = Math.max(knownCount, richEpisodes.length)
+  // Single-unit formats (movie/music/special) with a known count: trust it —
+  // AniList sometimes pads streamingEpisodes with a PV, which would otherwise add
+  // a bogus extra episode. Everything else takes max() so long TV shows all eps.
+  const singleUnit = ['MOVIE', 'MUSIC', 'SPECIAL'].includes(info.type)
+  const totalEps =
+    singleUnit && knownCount ? knownCount : Math.max(knownCount, richEpisodes.length)
   // Use rich cards (thumbnails) only when they cover EVERY episode; otherwise a
   // numbered list so all episodes stay selectable (e.g. One Piece: 69 → 1169).
   const useRich = richEpisodes.length > 0 && richEpisodes.length >= totalEps
@@ -358,7 +363,7 @@ export default function DetailPage({ id, onBack, onOpen, startEpisode = null, on
         {/* Rich list from AniList (thumbnails + titles) — when it covers all eps */}
         {useRich && (
           <div className="stream-grid" ref={episodesRef}>
-            {richEpisodes.slice(rangeStart, rangeStart + EP_PAGE).map((ep, i) => {
+            {richEpisodes.slice(rangeStart, Math.min(rangeStart + EP_PAGE, totalEps)).map((ep, i) => {
               const n = rangeStart + i + 1
               const seen = watched.has(n)
               return (
