@@ -62,6 +62,10 @@ SUGGESTED FIX: show a small "couldn't load — retry" placeholder instead of
 
 --------------------------------------------------------
  #3  [OURS] MED — Wrong error message on the hosted build
+     >>> STATUS: FIXED & DEPLOYED 2026-07-15 <<<
+     Error text is now build-aware (App.jsx uses the DIRECT flag): the
+     hosted site shows "The anime data service is busy (rate limited) or
+     unreachable. Give it a moment and try again." instead of "npm start".
 --------------------------------------------------------
 WHAT: The browse error state (App.jsx) reads: "the backend isn't running. Start
       both with `npm start`, or try again." On the HOSTED static site there is
@@ -72,6 +76,11 @@ SUGGESTED FIX: make the message build-aware (VITE_DATA_MODE=direct) — e.g.
 
 --------------------------------------------------------
  #4  [OURS] MED — Hosted build always offers/defaults to Dub, even for sub-only
+     >>> STATUS: FIXED & DEPLOYED 2026-07-15 <<<
+     Hosted build now starts on SUB by default (dub unverified), so sub-only
+     titles play immediately instead of a blank dub player. The Dub button is
+     still shown for titles that have one. (EmbedPlayer `dubUnverified` prop,
+     driven by the DIRECT build flag from DetailPage.)
 --------------------------------------------------------
 WHAT: The dub check needs the HiAnime scraper (server-only). The static build's
       getDub() returns `{dubAvailable:null}`, so the player treats dub as

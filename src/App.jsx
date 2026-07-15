@@ -8,7 +8,7 @@ import {
   useParams,
   useSearchParams,
 } from 'react-router-dom'
-import { FORMATS, GENRES, SEASONS, SORTS, STATUSES, YEARS, getTrending, searchAnime } from './api'
+import { DIRECT, FORMATS, GENRES, SEASONS, SORTS, STATUSES, YEARS, getTrending, searchAnime } from './api'
 import { getHistory, removeFromHistory } from './history'
 import { getFavorites, removeFavorite, toggleFavorite } from './favorites'
 import DetailPage from './DetailPage'
@@ -886,8 +886,14 @@ export default function App() {
             <div className="state-icon">⚠️</div>
             <p className="state-title">Couldn’t load anime</p>
             <p className="state-msg">
-              The data source may be down or the backend isn’t running. Start both
-              with <code>npm start</code>, or try again.
+              {DIRECT ? (
+                'The anime data service is busy (rate limited) or unreachable. Give it a moment and try again.'
+              ) : (
+                <>
+                  The data source may be down or the backend isn’t running. Start both
+                  with <code>npm start</code>, or try again.
+                </>
+              )}
               <br />
               <small style={{ opacity: 0.7 }}>{error}</small>
             </p>

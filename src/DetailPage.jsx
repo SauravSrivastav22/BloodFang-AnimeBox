@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { getInfo, getDub } from './api'
+import { DIRECT, getInfo, getDub } from './api'
 import { saveProgress, getWatchedEpisodes, markEpisodeWatched } from './history'
 import { isFavorite, toggleFavorite } from './favorites'
 import { enter3D, reveal3D } from './anim'
@@ -280,6 +280,7 @@ export default function DetailPage({ id, onBack, onOpen, startEpisode = null, on
             malId={info.malId}
             episode={activeEp}
             dubAvailable={dubAvailable !== false}
+            dubUnverified={DIRECT}
           />
         </section>
       )}

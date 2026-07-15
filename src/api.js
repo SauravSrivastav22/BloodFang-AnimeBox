@@ -7,7 +7,8 @@
 import { getSettings } from './settings'
 import { getInfoDirect, getTrendingDirect, searchDirect } from './anilist-direct'
 
-const DIRECT = import.meta.env.VITE_DATA_MODE === 'direct'
+// True in the static/hosted build (talks straight to AniList, no backend).
+export const DIRECT = import.meta.env.VITE_DATA_MODE === 'direct'
 
 // Fetch with a hard timeout so the UI can never hang forever waiting on a slow
 // or stuck backend — instead the caller's error/retry state kicks in.
