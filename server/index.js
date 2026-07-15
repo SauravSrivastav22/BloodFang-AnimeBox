@@ -112,6 +112,7 @@ async function _fetchAniListMeta(id) {
     id idMal title{romaji english userPreferred native}
     coverImage{extraLarge large} bannerImage description
     genres averageScore episodes duration status format startDate{year}
+    nextAiringEpisode{ episode }
     trailer{ id site thumbnail }
     characters(sort:ROLE,perPage:12){ edges{ role node{ name{ full } image{ large } } } }
     relations{ edges{ relationType node{ id type ${MEDIA_CARD_FIELDS} } } }
@@ -148,6 +149,9 @@ async function _fetchAniListMeta(id) {
     status: m.status,
     type: m.format,
     releaseDate: m.startDate?.year,
+    // For airing shows, the next episode number → (n-1) is the latest aired,
+    // used to list ALL episodes when `episodes` is null (e.g. One Piece).
+    nextAiringEpisode: m.nextAiringEpisode?.episode ?? null,
     // Only YouTube trailers can be embedded; ignore other hosts.
     trailer: m.trailer?.site === 'youtube' ? { id: m.trailer.id, thumbnail: m.trailer.thumbnail } : null,
     characters: (m.characters?.edges ?? []).map((e) => ({

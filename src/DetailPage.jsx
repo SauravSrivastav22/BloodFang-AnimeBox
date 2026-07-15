@@ -217,10 +217,14 @@ export default function DetailPage({ id, onBack, onOpen, startEpisode = null, on
   const anilistId = info.id || id
   // AniList's rich episode list (thumbnails + titles) if available.
   const richEpisodes = info.streamingEpisodes ?? []
-  // Otherwise fall back to a numbered list from the known episode count.
-  const epCount = info.totalEpisodes || info.currentEpisode || richEpisodes.length || 0
-  // Total episodes we can page through (rich list wins when present).
-  const totalEps = richEpisodes.length || epCount
+  // Best-known episode count: explicit total, else (for airing shows) the latest
+  // aired episode via nextAiringEpisode, else however many rich episodes we have.
+  const airedCount = info.nextAiringEpisode ? info.nextAiringEpisode - 1 : 0
+  const knownCount = info.totalEpisodes || info.currentEpisode || airedCount || 0
+  const totalEps = Math.max(knownCount, richEpisodes.length)
+  // Use rich cards (thumbnails) only when they cover EVERY episode; otherwise a
+  // numbered list so all episodes stay selectable (e.g. One Piece: 69 → 1169).
+  const useRich = richEpisodes.length > 0 && richEpisodes.length >= totalEps
   const rangeCount = Math.ceil(totalEps / EP_PAGE)
   // Prev / Next targets for the in-player episode nav (clamped to range).
   const prevEp = activeEp && activeEp > 1 ? activeEp - 1 : null
@@ -351,8 +355,8 @@ export default function DetailPage({ id, onBack, onOpen, startEpisode = null, on
           </div>
         )}
 
-        {/* Rich list from AniList (thumbnails + titles) */}
-        {richEpisodes.length > 0 && (
+        {/* Rich list from AniList (thumbnails + titles) — when it covers all eps */}
+        {useRich && (
           <div className="stream-grid" ref={episodesRef}>
             {richEpisodes.slice(rangeStart, rangeStart + EP_PAGE).map((ep, i) => {
               const n = rangeStart + i + 1
@@ -377,11 +381,12 @@ export default function DetailPage({ id, onBack, onOpen, startEpisode = null, on
           </div>
         )}
 
-        {/* Numbered list when there's no rich data (works for any title) */}
-        {richEpisodes.length === 0 && epCount > 0 && (
+        {/* Numbered list — used when rich data is absent OR incomplete (long
+            series like One Piece), so every episode stays selectable */}
+        {!useRich && totalEps > 0 && (
           <div className="episode-grid" ref={episodesRef}>
             {Array.from(
-              { length: Math.min(EP_PAGE, epCount - rangeStart) },
+              { length: Math.min(EP_PAGE, totalEps - rangeStart) },
               (_, i) => rangeStart + i + 1,
             ).map((n) => {
               const seen = watched.has(n)
@@ -402,7 +407,7 @@ export default function DetailPage({ id, onBack, onOpen, startEpisode = null, on
           </div>
         )}
 
-        {richEpisodes.length === 0 && epCount === 0 && (
+        {totalEps === 0 && (
           <div className="state-box">
             <div className="state-icon">📺</div>
             <p className="state-title">No episodes listed yet</p>

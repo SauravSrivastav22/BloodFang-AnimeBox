@@ -216,6 +216,7 @@ async function fetchMeta(id) {
     id idMal title{romaji english userPreferred native}
     coverImage{extraLarge large} bannerImage description
     genres averageScore episodes duration status format startDate{year}
+    nextAiringEpisode{ episode }
     trailer{ id site thumbnail }
     characters(sort:ROLE,perPage:12){ edges{ role node{ name{ full } image{ large } } } }
     relations{ edges{ relationType node{ id type ${CARD_FIELDS} } } }
@@ -244,6 +245,7 @@ async function fetchMeta(id) {
     status: m.status,
     type: m.format,
     releaseDate: m.startDate?.year,
+    nextAiringEpisode: m.nextAiringEpisode?.episode ?? null,
     trailer: m.trailer?.site === 'youtube' ? { id: m.trailer.id, thumbnail: m.trailer.thumbnail } : null,
     characters: (m.characters?.edges ?? []).map((e) => ({
       name: e.node?.name?.full,

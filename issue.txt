@@ -102,16 +102,19 @@ HANDLED: the player's auto-recovery skips a dead server and tries the next, and
 ACTION: none needed (monitor). Could drop/replace VidSrc if it stays down.
 
 --------------------------------------------------------
- #6  [UPSTREAM] LOW — Long-running series show too few episodes
+ #6  [OURS→FIXED] LOW — Long-running series show too few episodes
+     >>> STATUS: FIXED & DEPLOYED 2026-07-15 <<<
+     Added AniList `nextAiringEpisode` to the metadata query (server + client).
+     Episode count is now: episodes ?? (nextAiringEpisode - 1) ?? richLen, and
+     when the rich (thumbnail) list doesn't cover every episode we render a
+     paginated NUMBERED list of the full range. One Piece now shows ~1169
+     selectable episodes (was 69); finished shows still use thumbnail cards.
+     (Remaining edge: a series on hiatus with episodes=null + no
+     nextAiringEpisode still falls back to the rich count — rare.)
 --------------------------------------------------------
-WHAT: Episodes come from AniList `streamingEpisodes`. For One Piece that list
-      has only 69 entries (and `episodes` is null), so the UI shows just 69
-      episodes for a 1000+ ep show — you can't pick a later episode.
-NOTE: this is identical on the LOCAL build (same data source) — not a hosting
-      regression. It's an AniList data limitation.
-SUGGESTED (enhancement, later): when `episodes` is null and it's a long ONGOING
-      series, fall back to a generated numbered list up to a known count from
-      another source, so all episodes are selectable.
+WHAT (original): Episodes came from AniList `streamingEpisodes` only. For One
+      Piece that list has 69 entries (and `episodes` is null), so the UI showed
+      just 69 episodes for a 1000+ ep show — you couldn't pick a later episode.
 
 --------------------------------------------------------
  #7  [INFO] Deleted projects' old URLs still serve for now
