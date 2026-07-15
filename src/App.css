@@ -1440,6 +1440,10 @@ body {
 
 /* Phones */
 @media (max-width: 640px) {
+  /* Bigger, more readable on phones — desktop keeps its 0.78 density. */
+  body {
+    zoom: 0.9;
+  }
   .topbar {
     gap: 0.75rem;
     padding: 0.8rem 1rem;
@@ -1560,6 +1564,10 @@ body {
 
 /* Very small phones */
 @media (max-width: 380px) {
+  /* Full native size on small phones for maximum readability. */
+  body {
+    zoom: 1;
+  }
   .grid {
     grid-template-columns: repeat(2, 1fr);
   }
