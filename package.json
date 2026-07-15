@@ -1,0 +1,33 @@
+{
+  "name": "bloodfang",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "server": "node server/index.js",
+    "start": "concurrently -k -n API,WEB -c green,cyan \"npm:server\" \"npm:dev\"",
+    "build": "vite build",
+    "prod": "npm run build && node server/index.js",
+    "lint": "oxlint",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@consumet/extensions": "^1.8.8",
+    "animejs": "^4.5.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "firebase": "^12.16.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^7.18.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "concurrently": "^10.0.3",
+    "oxlint": "^1.71.0",
+    "vite": "^8.1.1"
+  }
+}

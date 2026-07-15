@@ -1,0 +1,280 @@
+========================================================
+ BloodFang (was DevilApp) — Pending Work & Forward Roadmap
+ Last updated: 2026-07-14
+ STATUS: Roadmap COMPLETE. #1-#8 done; #9 (deploy) intentionally
+         skipped — app is LOCAL-ONLY by design (npm run prod).
+========================================================
+
+--------------------------------------------------------
+ DONE (nothing pending here)
+--------------------------------------------------------
+Core app is complete and verified:
+  - Browse trending / popular
+  - Search filter + genre (category) filter
+  - Infinite scroll (paginated, de-duped)
+  - Detail pages (poster, synopsis, genres, tags)
+  - In-app embed video player (Vidnest / VidLink / VidSrc)
+  - Dub-first playback (hides Dub when unavailable)
+  - Multi-provider fallback (HiAnime -> AnimePahe -> AnimeKai)
+  - Continue Watching history
+  - Browser Back -> browse, Forward -> reopen anime
+  - Single-port production build:  npm run prod  ->  http://localhost:3001
+
+
+--------------------------------------------------------
+ PENDING / FORWARD WORK  (recommended order)
+--------------------------------------------------------
+
+PRIORITY 1 — Do next (real gaps)
+  [x] 1. URL routing (react-router)  -- DONE 2026-07-14
+         Added react-router-dom v7. Routes: / (browse),
+         /anime/:id (detail), /anime/:id?ep=N (deep-link to an
+         episode). Browse search/genres reflect into the URL
+         (/?q=&genres=). Pages are now shareable/bookmarkable and
+         survive refresh; Back/Forward go through the router.
+
+  [x] 2. Error / empty / loading polish  -- DONE 2026-07-14
+         Skeleton shimmer cards on load (browse grid + detail
+         hero); friendly empty state with Clear filters + Try
+         again; friendly error state with Try again (browse retry
+         + detail reload); load-more spinner; calm "no episodes"
+         box on the detail page.
+
+  [x] 3. Better player recovery  -- DONE 2026-07-14
+         Remembers last-working server (localStorage); 9s load
+         watchdog auto-advances to the next untried server when one
+         is unreachable (with a notice); loading overlay spinner;
+         "Not playing? Try next server" manual button. Working
+         server is saved as the new default on load.
+
+EXTRA — user requests (done)
+  [x] Blood vampire loader  -- DONE 2026-07-14
+         On-brand "Summoning..." overlay: spinning blood ring
+         around a pulsing vampire emoji with dripping blood,
+         shown >=2s on any button click. Global capture-phase
+         click listener; [data-no-loader] exempts in-place
+         toggles (player Server/Audio/Try-next, CW remove).
+
+
+PRIORITY 2 — High value, do after
+  [x] 4. Favorites / My List  -- DONE 2026-07-14
+         localStorage favorites (devilapp:favorites). Heart toggle
+         on every grid card, "Add to My List" button on the detail
+         page, and a "My List" row on the home view (open / remove).
+
+  [x] 5. Resume at last episode from card  -- DONE 2026-07-14
+         Grid cards for watched titles show a "Resume EP X" ribbon
+         that jumps straight to that episode (/anime/:id?ep=X).
+         Clicking elsewhere on the card opens the detail normally.
+
+  [x] 6. Search-as-you-type (debounced)  -- DONE 2026-07-14
+         Results update live while typing (~450ms debounce, no
+         request per keystroke). First load immediate; Enter still
+         searches instantly; no double-fetch. Genres + query both
+         flow through it and mirror into the URL.
+
+PRIORITY 3 — Polish / later
+  [x] 7. Mobile / responsive pass  -- DONE 2026-07-14
+         Breakpoints at 900/640/380px + @media(hover:none).
+         Full-width search row, horizontally-scrollable filter
+         chips, 2-3 col poster grid, stacked/centered detail hero,
+         2-up episode lists, always-visible heart on touch.
+
+  [x] 8. Genre landing rows on home  -- DONE 2026-07-14
+         Streaming-style horizontal rows for Action/Adventure/
+         Comedy/Romance/Fantasy/Sci-Fi on the home view (cached
+         per session, hides empty/failed rows). "See all ->"
+         filters the main grid to that genre.
+
+  [~] 9. Deploy option  -- WON'T DO (decided 2026-07-14): keep LOCAL-ONLY
+         Deliberately skipped. DevilApp embeds third-party pirate
+         sources, so a public deploy invites DMCA/takedowns + host
+         ToS bans, and the free embeds often block non-localhost
+         referrers (would serve UI but blank players). Personal use
+         is fully covered by `npm run prod` -> http://localhost:3001.
+         If portability is ever needed, prefer a PRIVATE Docker
+         self-host over a public URL.
+
+
+--------------------------------------------------------
+ WAITING ON UPSTREAM  (no action — code already done)
+--------------------------------------------------------
+  - Auto-hide Dub for sub-only titles
+      Coded; activates automatically when HiAnime dub-check
+      source recovers.
+
+  - Raw in-app streaming (Consumet)
+      Depends on scraper providers being up; embed player
+      (Vidnest) is the reliable path meanwhile.
+
+
+--------------------------------------------------------
+ LATER FIXES / POLISH (post-roadmap)
+--------------------------------------------------------
+  [x] Renamed DevilApp -> BloodFang; footer "BloodFang · Dark · Blood".
+  [x] Fixed detail page hanging forever on the skeleton (info endpoint
+      no longer coupled to the down HiAnime scraper; timeouts added;
+      client 20s abort -> retry screen).
+  [x] Detail page fast-path: /api/info returns metadata+episodes only
+      (~1-2s); dub check moved to /api/dub, fetched after paint.
+  [x] 3D cinematic effects via anime.js v4 (src/anim.js): staggered
+      3D card reveal (grid + genre rows), 3D cursor-tilt on cards,
+      3D detail-hero entrance + episode cascade, blood-red glow on
+      hover. Honors prefers-reduced-motion.
+  [x] Cinematic loader: vampire summon -> bite -> full-screen 3D
+      blood splash -> blood recedes over ~1.5s revealing the page
+      (anime.js timeline). Reduced-motion = quick fade.
+  [x] Loader v2: drawn SVG vampire (fangs/glowing eyes, Dracula
+      collar) replaces the emoji; fangs strike on bite; splash is
+      now a PARTIAL spatter (not full red) with the background
+      blurring during the splash.
+  [x] Loader v3: REAL vampire photo (Count Orlok / Nosferatu 1922,
+      public domain, Wikimedia), blood-red tinted, preloaded, with
+      SVG fallback if the image fails. (Needs internet at load.)
+  [x] Loader v4: no image; code-drawn ANIME-style vampire (grayscale,
+      red eyes, long hair, fangs) with an animated bite -- mouth
+      opens wide, then head lunges + jaw snaps shut (chomp) -> blood
+      splash. Fully offline.
+  [x] Loader v5 (user concept): blood drips fall -> clawed hand
+      reaches out toward the screen (3D) -> blood splash + bg blur
+      -> recedes ~1.5s revealing the page. anime.js, fully offline.
+  [x] Loader v6 (user concept, WIP base): centered circle (orb) with
+      blood raining inside it (CSS rain), ~2s then fade. User will
+      explain the rest next.
+  [x] Brand fang icon: horror fang-with-blood-drip SVG before the
+      "BloodFang" wordmark (both headers); matching fang favicon.
+  [x] Blood vial meter (before the wordmark) fills a bit each page
+      open (localStorage, MAX 6); when full a popup vial POURS blood
+      down into the loading orb, which fills, then resets. anime.js.
+  [x] Summon reveal: after the pour, a flash + a RANDOM anime rises
+      out of the blood ("The blood summons...") with poster + Watch
+      now button. Turns the ritual into a discovery reward.
+  [x] Sort control (Top Rated/Newest/Popular/Title...) + tag support:
+      backend now direct AniList GraphQL (genre_in + tag_in + sort).
+      Isekai added as a category (it's an AniList tag) and Isekai +
+      Slice of Life added to the home landing rows.
+  [x] App renders at 78% (zoom) by request.
+  [x] Code cleanup: removed unused Player.jsx / getSources / /api/watch
+      / hls.js / dead loader CSS + keyframes; simplified providers;
+      trimmed comments. Lint + build + endpoint smoke test green.
+
+--------------------------------------------------------
+ FUTURE ENHANCEMENTS  (proposed 2026-07-15, from a code review)
+--------------------------------------------------------
+ Core streaming loop is complete. These are the real remaining
+ gaps, in recommended order. Nothing here is required — the app
+ is fully usable today.
+
+HIGH VALUE (real UX gaps)
+  [x] A. Next / Previous episode controls in the player  -- DONE 2026-07-15
+         ◀ Prev / Next ▶ bar above the embed; clamped to [1,total],
+         saves progress + updates ?ep on each move. (DetailPage.jsx)
+
+  [x] B. Episode-list pagination for long series  -- DONE 2026-07-15
+         Range selector (1-100, 101-200, ...) shown only when a title
+         has >100 episodes; view auto-snaps to the playing episode's
+         range. (DetailPage.jsx, EP_PAGE=100)
+
+  [x] C. Watched-episode markers  -- DONE 2026-07-15
+         Played episodes dim + show a ✓. New per-title watched set in
+         localStorage (devilapp:watched), separate from the resume
+         pointer. (history.js getWatchedEpisodes/markEpisodeWatched)
+
+  [x] D. Related + Recommendations rows  -- DONE 2026-07-15
+         "Related" (sequels/prequels, relation-tagged) + "You might
+         also like" horizontal rows; clicking opens that title.
+         AniList relations+recommendations via fetchAniListMeta,
+         anime-only, mapped to the card shape. (server + DetailPage)
+
+  [x] E. Trailer + characters on the detail page  -- DONE 2026-07-15
+         YouTube trailer embed (hidden for non-YouTube/none) + a
+         character row (top 12). Same AniList meta query. (server +
+         DetailPage.jsx)
+
+MEDIUM VALUE (discovery / polish)
+  [x] F. More filters: Year / Season / Format / Status  -- DONE 2026-07-15
+         Four compact selects next to Sort; flow through URL sync +
+         debounced search + infinite scroll + Clear. Backend maps them
+         to AniList seasonYear/season/format/status. (server + api.js +
+         App.jsx)
+  [x] G. "Trending this Season" landing row on home  -- DONE 2026-07-15
+         Leads the home page; season computed from the date (Dec rolls
+         to next WINTER). GenreRow generalized into a reusable Row.
+         "See all →" filters the grid to the season. (App.jsx)
+  [x] H. Keyboard shortcuts  -- DONE 2026-07-15
+         "/" focuses search (browse); Esc = back (detail); ← / →
+         change episode while watching. Ignored while typing.
+  [x] I. Scroll-to-top button  -- DONE 2026-07-15
+         Floating button appears past 600px scroll; smooth-scrolls up.
+         (ScrollTopButton.jsx, rendered globally)
+  [x] J. Settings panel  -- DONE 2026-07-15
+         Gear popover: default Sub/Dub, blood-loader toggle, 3D
+         animations toggle. Persisted (bloodfang:settings) + broadcast
+         live; honored by EmbedPlayer / BloodLoader / anim.js.
+         (settings.js + SettingsPanel.jsx)
+  [x] K. Share button on the detail page  -- DONE 2026-07-15
+         Copies the current deep link (title + ?ep) to the clipboard
+         with a brief "✓ Copied!". (DetailPage.jsx)
+
+LOW VALUE (nice-to-have)
+  [x] L. Installable PWA  -- DONE 2026-07-15
+         manifest.webmanifest + service worker (offline app shell,
+         cache-first hashed assets, network-first navigation, never
+         caches /api or cross-origin). SW registered in prod only.
+         (public/manifest.webmanifest, public/sw.js, index.html,
+         main.jsx)
+  [x] M. Server-side cache for AniList responses  -- DONE 2026-07-15
+         In-memory TTL cache (meta/episodes 10min, search 5min);
+         only caches successes; opportunistic cleanup. Verified:
+         repeat call 1331ms → 25ms. (server/index.js cached())
+  [x] N. Adult-content (isAdult) filter toggle  -- DONE 2026-07-15
+         Settings toggle "Show adult (18+)"; api.js adds adult=1;
+         backend OMITS the isAdult filter when set (passing null
+         matches nothing on AniList). Default stays safe. (settings.js
+         + SettingsPanel + api.js + server)
+  [x] O. "Surprise me" random button  -- DONE 2026-07-15
+         Chip in the filter bar opens a random popular title (random
+         page + random pick). (App.jsx onSurprise)
+
+--------------------------------------------------------
+ CLOUD SYNC — Google sign-in (BUILT; awaiting user setup)
+--------------------------------------------------------
+ Goal: sign in with Google (Gmail) so data (My List, Continue
+ Watching, watched episodes, settings) saves to the cloud and
+ comes back on any other device you sign into. Merge = union, so
+ existing local data is never lost.
+
+  [x] Code complete  -- DONE 2026-07-15
+        Firebase Auth (Google) + Firestore, all client-side (no
+        backend change). Lazy-loaded (only downloads on Sign in).
+        New files: src/firebase-config.js, src/sync.js,
+        src/AccountButton.jsx, FIREBASE_SETUP.md. Stores emit
+        bloodfang:datachange; sync pulls+merges on login then
+        debounced-pushes on change. Sign-in button hidden until
+        configured, so app stays local-only meanwhile.
+        Lint + build green (firebase = separate lazy chunk).
+
+  [ ] TODO (user, ~5 min, one time) — see FIREBASE_SETUP.md
+        1. Create a free Firebase project (console.firebase.google.com)
+        2. Register a Web app; paste the 6 config values into
+           src/firebase-config.js (apiKey, authDomain, projectId,
+           storageBucket, messagingSenderId, appId)
+        3. Authentication → enable Google sign-in
+        4. Firestore → create DB (production mode) + paste the
+           security rules from FIREBASE_SETUP.md
+        Then: npm run prod → Sign in (top-right) → data syncs.
+        (Optional: Claude can fill in firebase-config.js if the
+         user pastes the config values.)
+
+ NOTE: phones sync DATA but can't PLAY (embeds need a local Node
+ backend + localhost) — treat a phone as view/manage-list only.
+
+--------------------------------------------------------
+ STATUS
+--------------------------------------------------------
+  Roadmap complete (#1-#8 + blood loader), #9 deploy skipped
+  (local-only by design). App runs via `npm run prod` on :3001.
+  ALL enhancements A-O DONE (2026-07-15).
+  Cloud sync (Google login) CODE DONE — awaiting user's Firebase
+  project setup (FIREBASE_SETUP.md) to activate.
+========================================================

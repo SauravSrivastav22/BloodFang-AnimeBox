@@ -1,0 +1,1560 @@
+:root {
+  --bg: #0d0b14;
+  --panel: #171226;
+  --panel-2: #211a38;
+  --accent: #e11d48;
+  --accent-2: #7c3aed;
+  --text: #f4f1fb;
+  --muted: #a89fc4;
+  --border: #2c2444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  zoom: 0.78; /* render the whole app at 78% (like a 78% browser zoom) */
+}
+
+.app {
+  min-height: 100vh;
+  background: radial-gradient(1200px 600px at 80% -10%, #2a1140 0%, var(--bg) 60%);
+  color: var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+/* Top bar */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(13, 11, 20, 0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+.brand-fang {
+  width: 1.05em;
+  height: 1.05em;
+  margin-right: 0.15rem;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 0 5px rgba(225, 29, 72, 0.75));
+}
+.brand span {
+  color: var(--text);
+}
+
+.searchbar {
+  display: flex;
+  flex: 1;
+  min-width: 240px;
+  max-width: 560px;
+}
+.searchbar input {
+  flex: 1;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 10px 0 0 10px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.95rem;
+  outline: none;
+}
+.searchbar input:focus {
+  border-color: var(--accent-2);
+}
+.searchbar button {
+  padding: 0 1.1rem;
+  border: none;
+  border-radius: 0 10px 10px 0;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Category filter chips */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem 0;
+}
+/* Sort dropdown */
+.sort-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-right: 0.35rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.sort-control select {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--accent-2);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.82rem;
+  cursor: pointer;
+  outline: none;
+}
+.sort-control select:hover {
+  border-color: var(--accent);
+}
+.chip {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chip:hover {
+  color: var(--text);
+  border-color: var(--accent-2);
+}
+.chip-on {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  border-color: transparent;
+}
+.chip-clear {
+  color: var(--accent);
+}
+
+/* Content */
+.content {
+  padding: 1.25rem 1.5rem 3rem;
+}
+.section-title {
+  font-size: 1.15rem;
+  margin: 0.5rem 0 1rem;
+}
+.status {
+  color: var(--muted);
+  padding: 1rem 0;
+}
+.status-error {
+  color: #fda4af;
+}
+.status code {
+  background: var(--panel-2);
+  padding: 0.1rem 0.35rem;
+  border-radius: 5px;
+}
+
+/* Continue Watching */
+.continue {
+  margin-bottom: 1.5rem;
+}
+.cw-card {
+  position: relative;
+}
+.cw-remove {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(13, 11, 20, 0.85);
+  color: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.cw-remove:hover {
+  background: var(--accent);
+}
+.cw-ep {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+}
+.cw-resume {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(13, 11, 20, 0.45);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.card-poster:hover .cw-resume {
+  opacity: 1;
+}
+
+/* Grid + cards */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1.1rem;
+  perspective: 1200px; /* depth for the 3D card reveal + cursor tilt */
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  /* transform is driven by anime.js (3D reveal + cursor tilt); animate the rest */
+  transition: border-color 0.15s, box-shadow 0.25s;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.card:hover {
+  border-color: var(--accent);
+  /* blood-red glow lift */
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55), 0 0 22px rgba(225, 29, 72, 0.45);
+}
+.card-poster {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  background: var(--panel-2);
+}
+.card-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.card-noimg {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.card-rating {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(13, 11, 20, 0.85);
+  color: #fbbf24;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+}
+/* Heart favorite toggle on grid cards (top-left; rating sits top-right) */
+.fav-btn {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(13, 11, 20, 0.8);
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, transform 0.1s, background 0.15s;
+}
+.card:hover .fav-btn,
+.fav-btn.fav-on {
+  opacity: 1;
+}
+.fav-btn:hover {
+  background: rgba(225, 29, 72, 0.85);
+}
+.fav-btn:active {
+  transform: scale(0.88);
+}
+.fav-btn.fav-on {
+  color: var(--accent);
+}
+
+/* "Resume EP X" ribbon on cards for already-watched titles */
+.resume-ribbon {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  border: none;
+  cursor: pointer;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(0deg, rgba(225, 29, 72, 0.95), rgba(225, 29, 72, 0.55));
+  backdrop-filter: blur(2px);
+  transition: background 0.15s;
+}
+.resume-ribbon:hover {
+  background: linear-gradient(0deg, var(--accent), var(--accent-2));
+}
+
+.card-title {
+  font-size: 0.9rem;
+  margin: 0.6rem 0.7rem 0.2rem;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.card-meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin: 0 0.7rem 0.8rem;
+}
+
+/* Detail page */
+.back-btn {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+.back-btn:hover {
+  border-color: var(--accent-2);
+}
+
+.detail {
+  perspective: 1400px; /* depth for the hero's 3D entrance */
+}
+.detail-hero {
+  border-radius: 14px;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+.detail-hero-inner {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: linear-gradient(180deg, rgba(13, 11, 20, 0.6), rgba(13, 11, 20, 0.95));
+  flex-wrap: wrap;
+}
+.detail-poster {
+  width: 180px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+.detail-info {
+  flex: 1;
+  min-width: 260px;
+}
+.detail-info h1 {
+  margin: 0 0 0.75rem;
+  font-size: 1.6rem;
+}
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.tag {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.tag-rating {
+  color: #fbbf24;
+}
+.fav-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.2rem 0 0.9rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+.fav-toggle:hover {
+  background: rgba(225, 29, 72, 0.12);
+}
+.fav-toggle:active {
+  transform: translateY(1px);
+}
+.fav-toggle.fav-on {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  color: #fff;
+}
+.detail-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+.detail-desc {
+  color: var(--muted);
+  line-height: 1.55;
+  font-size: 0.92rem;
+  max-width: 70ch;
+}
+
+/* Watch / player */
+.watch {
+  margin-bottom: 1.5rem;
+}
+
+/* Embed player */
+.embed-wrap {
+  margin-bottom: 0.5rem;
+}
+.embed-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.embed-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.embed-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+.embed-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.embed-audio {
+  margin-left: auto;
+}
+.embed-note {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-top: 0.5rem;
+}
+.embed-notice {
+  margin: 0.6rem 0 0;
+  padding: 0.55rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: #fde68a;
+  background: rgba(120, 90, 20, 0.25);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+}
+/* Loading overlay on top of the iframe until it fires `load` */
+.embed-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--text);
+  background: rgba(6, 5, 12, 0.75);
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+.embed-actions {
+  margin-top: 0.6rem;
+}
+.stream-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.stream-card:hover .stream-play {
+  opacity: 1;
+}
+.stream-card-on {
+  border-color: var(--accent);
+}
+.stream-card {
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.player {
+  width: 100%;
+  max-height: 70vh;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.quality-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* Episodes */
+.episode-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.6rem;
+  perspective: 1200px;
+}
+.episode {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.episode:hover {
+  border-color: var(--accent-2);
+}
+.episode-on {
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.25), rgba(124, 58, 237, 0.25));
+  border-color: var(--accent);
+}
+.episode-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.episode-disabled:hover {
+  border-color: var(--border);
+}
+.episode-num {
+  background: var(--panel-2);
+  border-radius: 6px;
+  padding: 0.15rem 0.5rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.episode-title {
+  font-size: 0.82rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  margin-left: 0.6rem;
+  vertical-align: middle;
+}
+
+.status-note {
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-2);
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+/* AniList streaming-episode cards (external legal links) */
+.stream-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.9rem;
+  perspective: 1200px;
+}
+.stream-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  text-decoration: none;
+  color: var(--text);
+  transition: transform 0.15s, border-color 0.15s;
+}
+.stream-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent-2);
+}
+.stream-thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--panel-2);
+}
+.stream-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.stream-site {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: rgba(13, 11, 20, 0.85);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.12rem 0.45rem;
+  border-radius: 5px;
+}
+.stream-title {
+  display: block;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+
+.sentinel {
+  height: 1px;
+}
+.end-note {
+  text-align: center;
+  opacity: 0.7;
+}
+
+/* Skeleton loaders (shown while page 1 loads) */
+@keyframes shimmer {
+  100% {
+    background-position: -200% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--panel-2) 25%,
+    #2c2450 37%,
+    var(--panel-2) 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+.skeleton-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.skeleton-poster {
+  aspect-ratio: 2 / 3;
+  width: 100%;
+}
+.skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+  margin: 0.6rem 0.7rem;
+}
+.skeleton-line.short {
+  width: 55%;
+}
+
+/* Friendly empty / error state boxes */
+.state-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+  padding: 2.5rem 1.25rem;
+  margin: 0.5rem auto;
+  max-width: 460px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.state-icon {
+  font-size: 2.2rem;
+  line-height: 1;
+}
+.state-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0.2rem 0 0;
+}
+.state-msg {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0;
+  line-height: 1.5;
+}
+.state-msg code {
+  background: var(--panel-2);
+  padding: 0.1rem 0.35rem;
+  border-radius: 5px;
+}
+.state-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 0.6rem;
+}
+.btn {
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.btn:hover {
+  border-color: var(--accent-2);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Detail skeleton hero: poster is a div (no img) so give it a height */
+.detail-hero-skeleton {
+  background: var(--panel);
+}
+.detail-hero-skeleton .detail-poster {
+  aspect-ratio: 2 / 3;
+  height: auto;
+}
+
+/* Inline spinner for "loading more" */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: -2px;
+  margin-right: 0.5rem;
+}
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Blood "summoning" loader — cinematic summon → bite → splash → reveal */
+.blood-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  perspective: 1000px; /* depth for the 3D stage + splash */
+  background: radial-gradient(
+    600px 420px at 50% 45%,
+    rgba(130, 0, 24, 0.4),
+    rgba(6, 4, 10, 0.94)
+  );
+  backdrop-filter: blur(3px);
+  transition: opacity 0.45s ease, backdrop-filter 0.5s ease;
+  animation: blood-fade 0.25s ease;
+}
+/* Fade the whole loader out before it unmounts */
+.blood-loader.bl-fade {
+  opacity: 0;
+}
+
+/* Centered orb with blood raining inside it */
+.orb {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 38%, #2a0812 0%, #12060c 68%, #08040a 100%);
+  border: 2px solid rgba(225, 29, 72, 0.55);
+  box-shadow: 0 0 44px rgba(225, 29, 72, 0.45), inset 0 0 44px rgba(0, 0, 0, 0.75);
+}
+.rain {
+  position: absolute;
+  inset: 0;
+}
+.drop {
+  position: absolute;
+  top: 0;
+  width: 5px;
+  height: 16px;
+  border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%;
+  background: linear-gradient(180deg, #ff2d4e, #b40c22 60%, #7f0a1c);
+  filter: drop-shadow(0 0 4px rgba(200, 0, 30, 0.7));
+  animation: rain-fall linear infinite;
+}
+@keyframes rain-fall {
+  0% {
+    transform: translateY(-24px);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(210px);
+    opacity: 0.1;
+  }
+}
+/* Blood collecting at the bottom of the orb */
+.orb-pool {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 26px;
+  background: linear-gradient(180deg, rgba(180, 12, 34, 0.6), #7f0a1c);
+  box-shadow: 0 -6px 14px rgba(180, 0, 30, 0.5);
+}
+
+/* Blood vial in the header (fills as you open pages) */
+.blood-glass {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.blood-glass svg {
+  width: 19px;
+  height: 26px;
+  filter: drop-shadow(0 0 4px rgba(225, 29, 72, 0.5));
+}
+.glass-fill {
+  transform-box: fill-box;
+  transform-origin: 50% 100%; /* liquid rises from the bottom */
+  transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.blood-glass.glass-full svg {
+  animation: glass-glow 0.9s ease-in-out infinite alternate;
+}
+@keyframes glass-glow {
+  from {
+    filter: drop-shadow(0 0 4px rgba(225, 29, 72, 0.5));
+  }
+  to {
+    filter: drop-shadow(0 0 12px rgba(225, 29, 72, 1));
+  }
+}
+
+/* "Vial full" pour popup — vial tips and pours into the loading orb */
+.pour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(600px 500px at 50% 40%, rgba(130, 0, 24, 0.42), rgba(6, 4, 10, 0.95));
+  backdrop-filter: blur(6px);
+  animation: blood-fade 0.3s ease;
+}
+.pour-text {
+  margin: 0 0 0.7rem;
+  color: #fca5a5;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  text-shadow: 0 0 12px rgba(225, 29, 72, 0.7);
+}
+.pour-vial {
+  transform-origin: 50% 88%; /* tips about its base */
+  will-change: transform, opacity;
+}
+.pour-vial-svg {
+  width: 72px;
+  height: auto;
+  filter: drop-shadow(0 0 14px rgba(225, 29, 72, 0.6));
+}
+.pour-stream {
+  width: 9px;
+  height: 84px;
+  margin: -8px 0;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #ff2d4e, #b40c22);
+  filter: drop-shadow(0 0 6px rgba(200, 0, 30, 0.7));
+  transform-origin: 50% 0%; /* pours downward */
+  will-change: transform;
+}
+.pour-orb {
+  margin-top: -4px;
+}
+/* The pool fills the whole orb as the blood pours in */
+.pour-pool {
+  top: 0;
+  height: 100%;
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+
+/* Summon reveal — a random anime rises out of the blood */
+.summon-flash {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 200px;
+  height: 200px;
+  margin: -100px 0 0 -100px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 60, 90, 0.9), rgba(225, 29, 72, 0) 70%);
+  pointer-events: none;
+}
+.summon-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1.1rem;
+  width: min(300px, 82vw);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(35, 12, 22, 0.9), rgba(13, 11, 20, 0.95));
+  border: 1px solid rgba(225, 29, 72, 0.55);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 34px rgba(225, 29, 72, 0.4);
+}
+.summon-poster {
+  width: 150px;
+  aspect-ratio: 2 / 3;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel-2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+.summon-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.summon-title {
+  margin: 0;
+  text-align: center;
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+.summon-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+@keyframes blood-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* Footer */
+.footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+  padding: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Genre landing rows (home) */
+.genre-rows {
+  margin-bottom: 1.5rem;
+}
+.genre-row {
+  margin-bottom: 1.4rem;
+}
+.genre-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.genre-row-head .section-title {
+  margin: 0.5rem 0 0.7rem;
+}
+.see-all {
+  flex: 0 0 auto;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.2rem 0.3rem;
+}
+.see-all:hover {
+  color: var(--accent-2);
+  text-decoration: underline;
+}
+.row-scroll {
+  display: flex;
+  gap: 0.9rem;
+  overflow-x: auto;
+  padding-bottom: 0.4rem;
+  perspective: 1200px; /* depth for 3D card reveal + tilt in genre rows */
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.row-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+.row-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 8px;
+}
+/* Fixed-width cards inside a horizontal row */
+.row-scroll > .card,
+.row-scroll > .skeleton-card {
+  flex: 0 0 150px;
+  width: 150px;
+  scroll-snap-align: start;
+}
+
+/* ---------------------------------------------------------------------------
+   Player episode nav (Prev / Next) + episode range selector
+   --------------------------------------------------------------------------- */
+.ep-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  margin: 0 0 0.75rem;
+}
+.ep-nav-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+  min-width: 120px;
+  text-align: center;
+}
+.ep-nav .btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Range chips (1–100, 101–200, …) for long-running series */
+.ep-ranges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+
+/* Watched-episode markers — dim played episodes + show a ✓ */
+.ep-watched {
+  opacity: 0.62;
+}
+.ep-watched .episode-num {
+  background: var(--accent);
+  color: #fff;
+}
+.ep-check {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  z-index: 2;
+}
+
+/* ---------------------------------------------------------------------------
+   Trailer + characters + related/recommendation rows
+   --------------------------------------------------------------------------- */
+.trailer,
+.characters,
+.rel-row {
+  margin-top: 1.75rem;
+}
+.trailer-frame {
+  width: 100%;
+  max-width: 720px;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #000;
+}
+.trailer-frame iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.char-scroll {
+  display: flex;
+  gap: 0.9rem;
+  overflow-x: auto;
+  padding-bottom: 0.4rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.char-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+.char-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 8px;
+}
+.char-card {
+  flex: 0 0 110px;
+  width: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.35rem;
+}
+.char-card img,
+.char-card .card-noimg {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+}
+.char-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.char-role {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+/* Related / recommendation poster (reuses the .row-scroll container) */
+.mini-card {
+  flex: 0 0 150px;
+  width: 150px;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  scroll-snap-align: start;
+}
+.mini-poster {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  transition: transform 0.15s, border-color 0.15s;
+}
+.mini-card:hover .mini-poster {
+  transform: translateY(-3px);
+  border-color: var(--accent-2);
+}
+.mini-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.mini-tag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(13, 11, 20, 0.85);
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+}
+.mini-title {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.82rem;
+  line-height: 1.25;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* ---------------------------------------------------------------------------
+   Settings popover (gear) + scroll-to-top + detail actions
+   --------------------------------------------------------------------------- */
+.settings {
+  position: relative;
+  flex-shrink: 0;
+}
+.gear-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.gear-btn:hover {
+  border-color: var(--accent-2);
+  transform: rotate(30deg);
+}
+.settings-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  width: 250px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+.settings-panel h3 {
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+  color: var(--accent);
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+  font-size: 0.85rem;
+}
+.settings-row + .settings-row {
+  border-top: 1px solid var(--border);
+}
+.settings-row .seg {
+  display: flex;
+  gap: 0.35rem;
+}
+.settings-row input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Account (Google sign-in) control in the header */
+.account-btn {
+  flex-shrink: 0;
+  padding: 0.5rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: var(--panel);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.account-btn:hover {
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.25), rgba(124, 58, 237, 0.25));
+}
+.account-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.account {
+  position: relative;
+  flex-shrink: 0;
+}
+.avatar-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+.avatar-btn:hover {
+  border-color: var(--accent-2);
+}
+.avatar-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.avatar-fallback {
+  font-weight: 700;
+  font-size: 1rem;
+}
+.account-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  width: 220px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+.account-name {
+  margin: 0 0 0.2rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-sync {
+  margin: 0 0 0.7rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.account-menu .btn {
+  width: 100%;
+}
+
+.scroll-top {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 70;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  transition: transform 0.15s;
+}
+.scroll-top:hover {
+  transform: translateY(-3px);
+}
+
+/* Fav + Share buttons sit side by side on the detail hero */
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+/* "Surprise me" chip — subtle accent tint to set it apart from genre chips */
+.surprise-btn {
+  border-color: var(--accent);
+  color: var(--text);
+  font-weight: 600;
+}
+.surprise-btn:hover {
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.25), rgba(124, 58, 237, 0.25));
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive / mobile pass
+   --------------------------------------------------------------------------- */
+
+/* Tablets & small laptops — tighten the grids a little */
+@media (max-width: 900px) {
+  .stream-grid {
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  }
+  .episode-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}
+
+/* Phones */
+@media (max-width: 640px) {
+  .topbar {
+    gap: 0.75rem;
+    padding: 0.8rem 1rem;
+  }
+  .brand {
+    font-size: 1.35rem;
+  }
+  /* Search drops to its own full-width row under the brand */
+  .searchbar {
+    min-width: 100%;
+    max-width: none;
+  }
+  .filters {
+    padding: 0.8rem 1rem 0;
+    gap: 0.4rem;
+    /* Keep chips on one scrollable row instead of a tall wall of wrapping */
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .filters::-webkit-scrollbar {
+    display: none;
+  }
+  .chip {
+    flex: 0 0 auto;
+  }
+  .content {
+    padding: 1rem 1rem 2.5rem;
+  }
+  .section-title {
+    font-size: 1.05rem;
+  }
+
+  /* Poster grid: comfortable 2–3 columns on narrow screens */
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.7rem;
+  }
+
+  /* Detail hero stacks and centers */
+  .detail-hero-inner {
+    gap: 1rem;
+    padding: 1rem;
+  }
+  .detail-poster {
+    width: 45%;
+    max-width: 160px;
+    margin: 0 auto;
+  }
+  .detail-info {
+    min-width: 0; /* prevent horizontal overflow on narrow screens */
+    width: 100%;
+  }
+  .detail-info h1 {
+    font-size: 1.3rem;
+  }
+  .detail-desc {
+    font-size: 0.88rem;
+  }
+
+  /* Episode lists: 2-up */
+  .stream-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.6rem;
+  }
+  .episode-grid {
+    grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  }
+
+  /* Player controls wrap cleanly; audio no longer pinned right */
+  .embed-audio {
+    margin-left: 0;
+  }
+  .embed-note,
+  .embed-notice {
+    font-size: 0.76rem;
+  }
+
+  /* Resume ribbon a touch smaller so it doesn't crowd the poster */
+  .resume-ribbon {
+    font-size: 0.72rem;
+    padding: 0.35rem 0.4rem;
+  }
+
+  /* Smaller cards in the horizontal genre rows */
+  .row-scroll > .card,
+  .row-scroll > .skeleton-card,
+  .mini-card {
+    flex-basis: 132px;
+    width: 132px;
+  }
+  .ep-nav {
+    gap: 0.5rem;
+  }
+
+  /* Loader orb scales down on phones */
+  .orb {
+    width: 168px;
+    height: 168px;
+  }
+}
+
+/* Very small phones */
+@media (max-width: 380px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .brand {
+    font-size: 1.25rem;
+  }
+}
+
+/* Touch devices have no hover: reveal the heart so favoriting is possible
+   (the poster tap still resumes / opens, so other hover overlays stay as-is). */
+@media (hover: none) {
+  .fav-btn {
+    opacity: 0.9;
+  }
+}

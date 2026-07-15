@@ -1,0 +1,18 @@
+{
+  "name": "BloodFang",
+  "short_name": "BloodFang",
+  "description": "Dark anime browser & player",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0d0b14",
+  "theme_color": "#0d0b14",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}
