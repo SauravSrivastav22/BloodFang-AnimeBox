@@ -1,6 +1,6 @@
 # 🧛 BloodFang
 
-**🔗 Live demo: https://bloodfang-animebox.web.app**
+**🔗 Live demo: https://bloodfang-anime.web.app**
 
 A dark, vampire-themed **anime browser & player** built with **React (Vite)** and
 a small **Express** backend. It aggregates data from **multiple anime APIs** for
@@ -83,7 +83,7 @@ npm run build:static          # builds dist/ in direct (no-backend) mode
 firebase deploy --only hosting
 ```
 
-Live: **https://bloodfang-animebox.web.app**
+Live: **https://bloodfang-anime.web.app**
 
 > Note: on the hosted build, video playback depends on whether the embed
 > providers allow the `web.app` domain; browse/search/details work regardless.

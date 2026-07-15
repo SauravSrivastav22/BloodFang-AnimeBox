@@ -278,8 +278,9 @@ LOW VALUE (nice-to-have)
   Cloud sync (Google login) CODE DONE — awaiting user's Firebase
   project setup (FIREBASE_SETUP.md) to activate.
   DEPLOYED (2026-07-15): live on Firebase Hosting (free) at
-  https://bloodfang-animebox.web.app via the static/direct-AniList
+  https://bloodfang-anime.web.app via the static/direct-AniList
   build (npm run build:static; firebase deploy --only hosting).
-  Custom domain deferred (kept free .web.app). Old duplicate
-  project bloodfang-fca0a to be deleted in the Firebase console.
+  Custom domain deferred (kept free .web.app). Duplicate projects
+  bloodfang-fca0a + bloodfang-animebox deleted (only bloodfang-anime
+  remains).
 ========================================================
