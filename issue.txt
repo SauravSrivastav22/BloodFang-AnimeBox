@@ -99,7 +99,9 @@ WHAT: https://vidsrc.cc/... returns 522 (Cloudflare origin down). Vidnest and
       VidLink both return 200. This is the provider's outage, not our bug.
 HANDLED: the player's auto-recovery skips a dead server and tries the next, and
       the manual "Server 1/2/3" + "Try next server" controls exist.
-ACTION: none needed (monitor). Could drop/replace VidSrc if it stays down.
+ACTION: none needed (monitor). RE-CHECKED 2026-07-15 (QA round 2): VidSrc now
+      TIMES OUT (still down) while Vidnest + VidLink return 200 — including a
+      deep episode (ep 101). Consider dropping/replacing VidSrc if it stays down.
 
 --------------------------------------------------------
  #6  [OURS→FIXED] LOW — Long-running series show too few episodes
@@ -130,6 +132,38 @@ ACTION: expected — no fix. (They'll 404 automatically.)
 Vidnest & VidLink return a player page (200); VidSrc is down (#5). Whether video
 actually plays on the `web.app` domain must be checked by clicking an episode in
 a browser. See #4 for the Sub/Dub default caveat.
+
+--------------------------------------------------------
+ #9  [OURS] LOW — Movies/specials can show a bogus extra "episode"  (QA round 2)
+--------------------------------------------------------
+WHAT: For a few single-unit titles AniList's `streamingEpisodes` has MORE
+      entries than the real episode count (e.g. Your Name / Kimi no Na wa:
+      episodes=1 but streamingEpisodes=2 — the 2nd entry is a PV/teaser). Our
+      count = max(episodes, richLen), so the detail page shows 2 episodes for a
+      1-episode movie; clicking "Episode 2" opens a player that has no such
+      episode → blank.
+IMPACT: minor/cosmetic; only affects some movies/specials.
+REPRO: open a movie whose AniList streamingEpisodes list is padded → an extra
+      episode tile appears.
+SUGGESTED FIX: when format is MOVIE/MUSIC/SPECIAL and `episodes` is known, cap
+      totalEps at `episodes` (don't max with richLen). Keep max() only for
+      ongoing TV where episodes is null.
+
+========================================================
+ QA ROUND 2 (2026-07-15) — after #1–#6 fixes: NO NEW MAJOR BUGS
+========================================================
+  Verified working:
+   + Filter combos: 2+ genres, genre+tag (Action+Isekai), year+season+format.
+   + Empty/edge: nonsense search -> 0 (empty state); over-restrictive combo -> 0.
+   + Search + genre combined (e.g. "dragon"+Action) works.
+   + Sorts oldest / title A–Z return correct ordering.
+   + Pagination: page 2 distinct from page 1 (0 overlap), hasNextPage correct.
+   + #6 across statuses: One Piece(airing)->1169, Death Note/JJK/AoT(finished)
+     use real counts; movies handled (see #9 for the padded-list quirk).
+   + Relations correctly filtered to ANIME only (FMA:B 5 relations -> 4 shown).
+   + Data completeness: obscure titles still return title/desc/cover/genres.
+   + Embeds: Vidnest + VidLink 200 (incl. deep ep 101); VidSrc still down (#5).
+  Only new item logged: #9 (low). #5 refreshed.
 
 ========================================================
  WHAT PASSED (verified working on the live data layer)
