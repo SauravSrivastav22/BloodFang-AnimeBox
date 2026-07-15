@@ -1,0 +1,144 @@
+========================================================
+ BloodFang — QA / Bug Log
+ Tester: Claude (automated QA pass)
+ Date:   2026-07-15
+ Live:   https://bloodfang-anime.web.app  (static / direct-AniList build)
+ Method: hit the live URL + the exact AniList/embed calls the browser makes.
+ NOTE:   in-browser rendering & actual video playback can't be verified
+         headlessly — items marked [NEEDS BROWSER] must be eyeballed.
+========================================================
+
+LEGEND
+  [OURS]     = a bug in our code we can fix
+  [UPSTREAM] = a third-party (AniList / embed provider) problem, not ours
+  [INFO]     = expected behaviour / note, no fix needed
+  Severity: HIGH / MED / LOW
+
+--------------------------------------------------------
+ #1  [OURS] HIGH — Hosted build hits AniList rate limit (429); no cache
+     >>> STATUS: FIXED & DEPLOYED 2026-07-15 <<<
+     Added client-side cache (memory + sessionStorage, survives reloads),
+     in-flight de-dupe, concurrency cap (4), and 429 retry honoring
+     Retry-After — in src/anilist-direct.js gql(). Verified in the live
+     bundle. Reloads now refetch nothing; bursts throttle + auto-retry.
+--------------------------------------------------------
+WHAT: AniList's rate limit is currently 30 requests/minute (confirmed via
+      response header `X-RateLimit-Limit: 30`). In a burst test we got HTTP 429
+      after ~10 requests (Retry-After ≈ 31s).
+WHY IT BITES US: the home page fires ~10 AniList requests on FIRST load
+      (trending grid + "Trending this Season" row + 8 genre rows). A browser
+      reload re-fires all of them; add a couple of searches / detail opens and
+      the user blows past 30/min and starts getting 429s.
+ROOT CAUSE: the LOCAL build has a server-side cache (server/index.js `cached()`)
+      that collapses repeat AniList calls. The STATIC/hosted build talks to
+      AniList directly (src/anilist-direct.js) with **no cache and no throttling**,
+      so every render is a fresh hit.
+SYMPTOMS ON THE LIVE SITE:
+  - Home rows randomly disappear (see #2).
+  - Grid shows the "Couldn't load anime" error screen intermittently.
+  - Opening a detail page sometimes shows "Couldn't load this title".
+REPRO: hard-refresh the live site 2–3 times quickly, or open several titles in a
+      row → some rows vanish / error screens appear.
+SUGGESTED FIX:
+  - Add a client-side cache in anilist-direct.js (in-memory + sessionStorage,
+    short TTL) mirroring the server cache — biggest win.
+  - De-dupe in-flight identical requests.
+  - Throttle concurrency (e.g. max 3–4 in flight) and/or stagger the home rows.
+  - On 429, respect `Retry-After` and retry instead of failing.
+
+--------------------------------------------------------
+ #2  [OURS] MED — Genre/season rows vanish silently on any fetch error
+     >>> LARGELY MITIGATED by #1's 429 retry (rows no longer drop on rate
+         limits). Still worth a retry/placeholder for genuine failures. <<<
+--------------------------------------------------------
+WHAT: In App.jsx `Row`, any fetch failure (incl. a 429 from #1) sets
+      `failed=true` and the component returns null — the whole row just
+      disappears with no message.
+IMPACT: on the live site the home page can show a different set of rows each
+      load; looks broken/random. Compounds #1.
+REPRO: trigger a 429 (see #1) → one or more home rows are simply gone.
+SUGGESTED FIX: show a small "couldn't load — retry" placeholder instead of
+      hiding, and/or retry on 429. (Fixing #1 makes this rare.)
+
+--------------------------------------------------------
+ #3  [OURS] MED — Wrong error message on the hosted build
+--------------------------------------------------------
+WHAT: The browse error state (App.jsx) reads: "the backend isn't running. Start
+      both with `npm start`, or try again." On the HOSTED static site there is
+      no backend to start, so this instruction is misleading/confusing.
+REPRO: cause a data error on the live site (e.g. a 429) → wrong message shows.
+SUGGESTED FIX: make the message build-aware (VITE_DATA_MODE=direct) — e.g.
+      "The anime data service is busy (rate limited). Wait a moment and retry."
+
+--------------------------------------------------------
+ #4  [OURS] MED — Hosted build always offers/defaults to Dub, even for sub-only
+--------------------------------------------------------
+WHAT: The dub check needs the HiAnime scraper (server-only). The static build's
+      getDub() returns `{dubAvailable:null}`, so the player treats dub as
+      available and (per Settings default) starts on Dub. For a sub-only title
+      the Dub embed can load blank.
+IMPACT: on the live site, sub-only shows may open to a blank/again player until
+      the user switches to Sub.
+REPRO: [NEEDS BROWSER] open a sub-only title on the live site, press play.
+SUGGESTED FIX: in direct mode, default audio to Sub (safer), OR detect via one
+      of the embed providers, OR just surface the Sub/Dub toggle more prominently.
+
+--------------------------------------------------------
+ #5  [UPSTREAM] LOW — VidSrc embed server is down (HTTP 522)
+--------------------------------------------------------
+WHAT: https://vidsrc.cc/... returns 522 (Cloudflare origin down). Vidnest and
+      VidLink both return 200. This is the provider's outage, not our bug.
+HANDLED: the player's auto-recovery skips a dead server and tries the next, and
+      the manual "Server 1/2/3" + "Try next server" controls exist.
+ACTION: none needed (monitor). Could drop/replace VidSrc if it stays down.
+
+--------------------------------------------------------
+ #6  [UPSTREAM] LOW — Long-running series show too few episodes
+--------------------------------------------------------
+WHAT: Episodes come from AniList `streamingEpisodes`. For One Piece that list
+      has only 69 entries (and `episodes` is null), so the UI shows just 69
+      episodes for a 1000+ ep show — you can't pick a later episode.
+NOTE: this is identical on the LOCAL build (same data source) — not a hosting
+      regression. It's an AniList data limitation.
+SUGGESTED (enhancement, later): when `episodes` is null and it's a long ONGOING
+      series, fall back to a generated numbered list up to a known count from
+      another source, so all episodes are selectable.
+
+--------------------------------------------------------
+ #7  [INFO] Deleted projects' old URLs still serve for now
+--------------------------------------------------------
+WHAT: https://bloodfang-animebox.web.app and https://bloodfang-fca0a.web.app
+      still return 200. The projects are DELETE_REQUESTED (Google's 30-day
+      recovery window); the URLs go dead after the projects are fully purged.
+ACTION: expected — no fix. (They'll 404 automatically.)
+
+--------------------------------------------------------
+ #8  [INFO] Playback not verifiable without a real browser
+--------------------------------------------------------
+Vidnest & VidLink return a player page (200); VidSrc is down (#5). Whether video
+actually plays on the `web.app` domain must be checked by clicking an episode in
+a browser. See #4 for the Sub/Dub default caveat.
+
+========================================================
+ WHAT PASSED (verified working on the live data layer)
+========================================================
+  + Home page, JS/CSS bundles, SPA deep-links (/anime/:id), PWA files — all 200.
+  + Static build is the correct "direct AniList" build (bundle calls AniList).
+  + AniList CORS = `*` (browser calls allowed).
+  + All sorts (trending/popular/score/newest/oldest/title) return results.
+  + All advanced filters (year, season, format, status) return results.
+  + Genre vs TAG chip split works (Action=genre, Isekai=tag, Slice of Life=genre).
+  + Free-text search works.
+  + Detail queries work incl. edge cases (One Piece null-episodes, Spirited Away
+    movie with 0 streamingEpisodes, Cowboy Bebop, AoT) — metadata, episodes,
+    trailer, characters, relations, recommendations all present.
+  + Invalid id (999999999) → graceful error screen (AniList 404), not a crash.
+
+========================================================
+ PRIORITY TO FIX
+========================================================
+  1. #1 client-side cache + 429 handling (root cause of the visible flakiness)
+  2. #2 don't hide rows silently  +  #3 fix hosted error message
+  3. #4 Sub/Dub default on the hosted build
+  (#5/#6 upstream — monitor; #7/#8 info)
+========================================================

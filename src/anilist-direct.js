@@ -9,16 +9,110 @@
 const ENDPOINT = 'https://graphql.anilist.co'
 const PER_PAGE = 24
 
-async function gql(query, variables) {
-  const res = await fetch(ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ query, variables }),
-  })
-  if (!res.ok) throw new Error(`AniList responded ${res.status}`)
-  const json = await res.json()
-  if (json.errors?.length) throw new Error(json.errors[0]?.message || 'AniList error')
-  return json.data
+// --- Client-side cache + throttle + 429 retry -------------------------------
+// The static build calls AniList directly (no server cache) and AniList rate-
+// limits to ~30 req/min. A normal home load fires ~10 queries, so without this
+// the site trips HTTP 429 during ordinary browsing. To prevent that we:
+//   • cache responses in memory + sessionStorage (so a reload refetches nothing),
+//   • de-dupe identical in-flight requests,
+//   • cap concurrency so the home load doesn't burst,
+//   • retry on 429, honoring the Retry-After header.
+const SS_PREFIX = 'bloodfang:acache:'
+const TTL_SEARCH = 5 * 60 * 1000 // trending/search results
+const TTL_INFO = 10 * 60 * 1000 // metadata/episodes (change rarely)
+const mem = new Map() // key -> { exp, data }
+const inflight = new Map() // key -> Promise
+
+function cacheGet(key) {
+  const hit = mem.get(key)
+  if (hit && hit.exp > Date.now()) return hit.data
+  try {
+    const raw = sessionStorage.getItem(SS_PREFIX + key)
+    if (raw) {
+      const o = JSON.parse(raw)
+      if (o.exp > Date.now()) {
+        mem.set(key, o)
+        return o.data
+      }
+      sessionStorage.removeItem(SS_PREFIX + key)
+    }
+  } catch {
+    /* sessionStorage unavailable — memory cache still applies */
+  }
+  return null
+}
+
+function cacheSet(key, data, ttlMs) {
+  const o = { exp: Date.now() + ttlMs, data }
+  mem.set(key, o)
+  try {
+    sessionStorage.setItem(SS_PREFIX + key, JSON.stringify(o))
+  } catch {
+    /* quota / disabled — ignore */
+  }
+}
+
+// Simple concurrency limiter so ~10 home queries don't hit AniList all at once.
+const MAX_CONCURRENT = 4
+let active = 0
+const waiters = []
+function acquire() {
+  if (active < MAX_CONCURRENT) {
+    active++
+    return Promise.resolve()
+  }
+  return new Promise((res) => waiters.push(res))
+}
+function release() {
+  active--
+  const next = waiters.shift()
+  if (next) {
+    active++
+    next()
+  }
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+async function rawFetch(query, variables) {
+  const MAX_RETRY = 3
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ query, variables }),
+    })
+    if (res.status === 429 && attempt < MAX_RETRY) {
+      // Honor Retry-After (seconds); fall back to exponential backoff.
+      const wait = Number(res.headers.get('Retry-After')) || 2 ** attempt
+      await sleep(wait * 1000)
+      continue
+    }
+    if (!res.ok) throw new Error(`AniList responded ${res.status}`)
+    const json = await res.json()
+    if (json.errors?.length) throw new Error(json.errors[0]?.message || 'AniList error')
+    return json.data
+  }
+}
+
+async function gql(query, variables, ttlMs = TTL_SEARCH) {
+  const key = query.replace(/\s+/g, ' ').trim() + '|' + JSON.stringify(variables ?? {})
+  const cached = cacheGet(key)
+  if (cached) return cached
+  if (inflight.has(key)) return inflight.get(key) // de-dupe identical requests
+  const p = (async () => {
+    await acquire()
+    try {
+      const data = await rawFetch(query, variables)
+      cacheSet(key, data, ttlMs)
+      return data
+    } finally {
+      release()
+      inflight.delete(key)
+    }
+  })()
+  inflight.set(key, p)
+  return p
 }
 
 // Real AniList genres — anything else a user picks (e.g. "Isekai") is a TAG.
@@ -127,7 +221,7 @@ async function fetchMeta(id) {
     relations{ edges{ relationType node{ id type ${CARD_FIELDS} } } }
     recommendations(sort:RATING_DESC,perPage:12){ nodes{ mediaRecommendation{ id type ${CARD_FIELDS} } } }
   }}`
-  const m = (await gql(query, { id: Number(id) }))?.Media
+  const m = (await gql(query, { id: Number(id) }, TTL_INFO))?.Media
   if (!m) throw new Error('Title not found on AniList')
   const related = (m.relations?.edges ?? [])
     .filter((e) => e.node?.type === 'ANIME')
@@ -163,7 +257,7 @@ async function fetchMeta(id) {
 
 async function fetchEpisodes(id) {
   const query = `query($id:Int){Media(id:$id,type:ANIME){streamingEpisodes{title thumbnail url site}}}`
-  const m = (await gql(query, { id: Number(id) }))?.Media
+  const m = (await gql(query, { id: Number(id) }, TTL_INFO))?.Media
   return (m?.streamingEpisodes ?? []).map((ep, i) => ({
     id: ep.url,
     number: i + 1,
