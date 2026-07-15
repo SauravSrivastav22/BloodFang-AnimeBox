@@ -20,6 +20,9 @@ dist-ssr
 # Local tooling config
 .claude/
 
+# Firebase deploy cache
+.firebase/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -1,6 +1,13 @@
 // Frontend API client — talks to the BloodFang backend (see server/index.js).
 // In dev, Vite proxies /api → http://localhost:3001.
+//
+// STATIC/HOSTED build: when built with VITE_DATA_MODE=direct (Firebase Hosting,
+// no backend), the data calls go straight to AniList from the browser instead of
+// to /api. Local `npm run prod` leaves this unset and uses the Express backend.
 import { getSettings } from './settings'
+import { getInfoDirect, getTrendingDirect, searchDirect } from './anilist-direct'
+
+const DIRECT = import.meta.env.VITE_DATA_MODE === 'direct'
 
 // Fetch with a hard timeout so the UI can never hang forever waiting on a slow
 // or stuck backend — instead the caller's error/retry state kicks in.
@@ -31,7 +38,8 @@ async function get(path, timeoutMs = 20000) {
   return res.json()
 }
 
-export const getTrending = (page = 1) => get(`/api/trending?page=${page}`)
+export const getTrending = (page = 1) =>
+  DIRECT ? getTrendingDirect(page) : get(`/api/trending?page=${page}`)
 
 // Combined search + genre (category) filter + sort + advanced filters
 // (year / season / format / status). Empty values are omitted (treated as "any").
@@ -54,7 +62,11 @@ export function searchAnime({
   if (format) params.set('format', format)
   if (status) params.set('status', status)
   // Include 18+ titles only when the user has opted in (Settings).
-  if (getSettings().adult) params.set('adult', '1')
+  const adult = getSettings().adult
+  if (DIRECT) {
+    return searchDirect({ query, genres, sort, year, season, format, status, adult, page })
+  }
+  if (adult) params.set('adult', '1')
   params.set('page', String(page))
   return get(`/api/search?${params.toString()}`)
 }
@@ -105,12 +117,16 @@ export const YEARS = (() => {
   return list
 })()
 
-export const getInfo = (id) => get(`/api/info/${encodeURIComponent(id)}`)
+export const getInfo = (id) =>
+  DIRECT ? getInfoDirect(id) : get(`/api/info/${encodeURIComponent(id)}`)
 
 // Dub availability, fetched separately after the detail page paints (the check
-// is slow/flaky, so it must not block the first render).
+// is slow/flaky, so it must not block the first render). Not available in the
+// static build (needs the scraper) → null = stay dub-first.
 export const getDub = (id, title = '') =>
-  get(`/api/dub/${encodeURIComponent(id)}?title=${encodeURIComponent(title)}`)
+  DIRECT
+    ? Promise.resolve({ dubAvailable: null })
+    : get(`/api/dub/${encodeURIComponent(id)}?title=${encodeURIComponent(title)}`)
 
 // Category filter chips. Real AniList genres + popular TAGS (Isekai, etc.) — the
 // backend routes each chip to genre_in or tag_in automatically.

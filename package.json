@@ -8,6 +8,7 @@
     "server": "node server/index.js",
     "start": "concurrently -k -n API,WEB -c green,cyan \"npm:server\" \"npm:dev\"",
     "build": "vite build",
+    "build:static": "vite build --mode static",
     "prod": "npm run build && node server/index.js",
     "lint": "oxlint",
     "preview": "vite preview"
