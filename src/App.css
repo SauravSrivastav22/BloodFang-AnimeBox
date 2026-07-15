@@ -1050,6 +1050,7 @@ body {
   display: flex;
   gap: 0.9rem;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   padding-bottom: 0.4rem;
   perspective: 1200px; /* depth for 3D card reveal + tilt in genre rows */
   scroll-snap-type: x proximity;
@@ -1154,6 +1155,7 @@ body {
   display: flex;
   gap: 0.9rem;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   padding-bottom: 0.4rem;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
@@ -1466,13 +1468,17 @@ body {
     /* Keep chips on one scrollable row instead of a tall wall of wrapping */
     flex-wrap: nowrap;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
   }
   .filters::-webkit-scrollbar {
     display: none;
   }
-  .chip {
+  /* Chips AND dropdowns keep their natural size in the horizontal scroll row
+     (without flex:0 0 auto the selects get squished). */
+  .chip,
+  .sort-control {
     flex: 0 0 auto;
   }
   .content {
@@ -1541,6 +1547,7 @@ body {
     width: 132px;
   }
   .ep-nav {
+    flex-wrap: wrap;
     gap: 0.5rem;
   }
 
@@ -1558,6 +1565,23 @@ body {
   }
   .brand {
     font-size: 1.25rem;
+  }
+  .detail-info h1 {
+    font-size: 1.15rem;
+  }
+  /* Episode nav label shouldn't force a wide min-width on tiny screens */
+  .ep-nav-label {
+    min-width: auto;
+    font-size: 0.8rem;
+  }
+  /* Episode lists stay a comfortable 2-up */
+  .stream-grid,
+  .episode-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  /* Trailer keeps its aspect but never overflows */
+  .trailer-frame {
+    max-width: 100%;
   }
 }
 
