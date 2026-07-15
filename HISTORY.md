@@ -476,6 +476,24 @@ Post-roadmap enhancement pass — **15 features (A–O)**, all lint-clean + buil
   `public/manifest.webmanifest`, `public/sw.js`. Final bundle: CSS 21.1 KB
   (gzip 5.0), JS 313 KB (gzip 101).
 
+**Cloud sync (Google sign-in) — code complete, awaiting user setup**
+- ☁️ **Google sign-in + cross-device sync** via **Firebase** (Auth + Firestore),
+  all client-side (no backend change). Sign in → your data (My List, Continue
+  Watching, watched episodes, settings) uploads to your own Firestore; sign in on
+  another device → it merges back. Merge is a **union** (favorites/history by id
+  keeping newest, watched episodes combined, settings from cloud) so nothing is
+  ever lost. Local stores now emit `bloodfang:datachange`; `sync.js` pulls+merges
+  on login then debounce-pushes on change; `AccountButton` shows sign-in / avatar.
+  Firebase loads as a **lazy chunk** (only on Sign in). Hidden + no-op until the
+  user fills `src/firebase-config.js`, so the app stays local-only meanwhile.
+  New files: `firebase-config.js`, `sync.js`, `AccountButton.jsx`,
+  `FIREBASE_SETUP.md` (step-by-step console setup + Firestore rules).
+- 🧑‍💻 **Published to GitHub** (user request): repo
+  `SauravSrivastav22/BloodFang-AnimeBox` (public). Added `.gitignore` entries
+  (`.claude/`, `.env`, `*.zip`); excluded `node_modules`/`dist`. README rewritten
+  to describe the data source generically as "multiple anime APIs" (no provider
+  names), with current features/run/endpoints. Repo description + topics set.
+
 ---
 
 ## Task Log / TODO
