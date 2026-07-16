@@ -156,20 +156,28 @@ export default function EmbedPlayer({
       {notice && <p className="embed-notice">⚠ {notice}</p>}
 
       <p className="embed-note">
-        ▶ Playing “{server.label}”. Pop-up/new-tab ads are blocked here. If the player
-        is blank or says “couldn’t find this episode”, click{' '}
-        <strong>Not playing? Try next server</strong> or pick another Server. These
-        free sources are volatile and may still show in-frame ads.
+        ▶ Playing “{server.label}”. If the player is blank or says “couldn’t find this
+        episode”, click <strong>Not playing? Try next server</strong> or pick another
+        Server. These free sources are volatile and may show ads.
+      </p>
+      <p className="embed-tip" data-no-loader>
+        💡 These free servers open pop-up/new-tab ads on click — that’s the provider,
+        not BloodFang, and blocking them in-app stops the video from playing. To kill
+        the pop-ups, use a browser ad-blocker like{' '}
+        <a href="https://ublockorigin.com/" target="_blank" rel="noopener noreferrer">
+          uBlock Origin
+        </a>{' '}
+        or the Brave browser.
       </p>
 
       <div className="embed-frame">
-        {/* Pop-up blocker: the sandbox OMITS `allow-popups` and
-            `allow-top-navigation`, so the free providers' ad scripts can no
-            longer open new tabs or hijack this page on click — the #1 annoyance
-            while watching. We still grant `allow-scripts allow-same-origin`
-            (plus forms/presentation/fullscreen) so the actual player keeps
-            running. If a provider ever refuses to load under sandbox, the user
-            can pick another Server or use "Open in new tab ↗". */}
+        {/* NO `sandbox` attribute — these free embed providers detect it and
+            refuse to play ("Please Disable Sandbox"): their anti-adblock checks
+            require pop-up capability, so blocking pop-ups via sandbox also
+            blocks the video (confirmed 2026-07-16). The trade-off is the source
+            can open pop-up/new-tab ads. The only reliable way to stop those
+            WITHOUT breaking playback is a browser-level blocker (uBlock Origin /
+            Brave) — see the tip under the player. */}
         <iframe
           key={src}
           src={src}
@@ -177,7 +185,6 @@ export default function EmbedPlayer({
           onLoad={onFrameLoad}
           allowFullScreen
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-orientation-lock"
           referrerPolicy="origin"
         />
         {status === 'loading' && (

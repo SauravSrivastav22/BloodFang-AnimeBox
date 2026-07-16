@@ -474,6 +474,18 @@ body {
   font-size: 0.78rem;
   margin-top: 0.5rem;
 }
+.embed-tip {
+  color: var(--muted);
+  font-size: 0.76rem;
+  margin: 0.35rem 0 0;
+  padding: 0.5rem 0.7rem;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: rgba(124, 58, 237, 0.08);
+}
+.embed-tip a {
+  color: var(--accent-2);
+}
 .embed-notice {
   margin: 0.6rem 0 0;
   padding: 0.55rem 0.8rem;

@@ -198,22 +198,22 @@ USER ACTION: hard-refresh once (Ctrl+Shift+R) to drop the old version; One Piece
      embeds Vidnest+VidLink 200, PWA sw.js 200, SPA deep /anime/21 = 200.
 
 --------------------------------------------------------
- #11 [OURS→FIXED] HIGH — Video player opens pop-up / new-tab ads on click
-     >>> STATUS: FIXED & DEPLOYED 2026-07-16 <<<
-     The <iframe> had NO sandbox, so the free embed providers' ad scripts were
-     free to window.open()/target=_blank on every click -> a new ad tab kept
-     opening while watching. Added sandbox WITHOUT `allow-popups` and WITHOUT
-     `allow-top-navigation` (kept allow-scripts allow-same-origin allow-forms
-     allow-presentation allow-orientation-lock) so pop-ups/new tabs are blocked
-     but the player still runs. (EmbedPlayer.jsx.)
-     CAVEAT [NEEDS BROWSER]: if any provider refuses under sandbox ("Please
-     Disable Sandbox"), switch Server or use "Open in new tab ↗". Verify one
-     playback after deploy; if a provider breaks, relax the sandbox for it.
+ #11 [UPSTREAM] HIGH — Video player opens pop-up / new-tab ads on click
+     >>> STATUS: CANNOT FIX IN-APP (reverted) — use a browser blocker <<<
+     ATTEMPT (2026-07-16): added an iframe sandbox WITHOUT allow-popups to block
+     the new-tab ads. RESULT: the providers detected the sandbox and refused to
+     play ("Please Disable Sandbox") — their anti-adblock REQUIRES pop-up
+     capability, so any in-app pop-up block also blocks the video. REVERTED the
+     sandbox the same day; playback restored.
+     CONCLUSION: the new-tab ads are the free providers' monetization and cannot
+     be stopped from our page without breaking playback. The reliable fix is a
+     BROWSER-LEVEL blocker (uBlock Origin / Brave), which blocks the ad domains
+     at the network layer. Added an in-player tip pointing users to uBlock
+     Origin. (EmbedPlayer.jsx embed-tip.)
 --------------------------------------------------------
-WHAT: while watching, clicking the video (or its overlay) opened a new browser
-      tab with an ad. Classic free-embed monetization; our missing sandbox let
-      it through. In-frame ads may still appear (can't sandbox those away
-      without breaking the player) but the new-tab spam is gone.
+WHAT: while watching, clicking the video (or its overlay) opens a new browser
+      tab with an ad. Classic free-embed monetization. We can't sandbox it away
+      (see above). Mitigation = recommend a browser ad-blocker to the user.
 
 --------------------------------------------------------
  #12 [OURS→FIXED] MED — Sign in/account button not top-right on detail pages
