@@ -50,15 +50,26 @@ async function ensureFirebase() {
   return true
 }
 
-// Snapshot of all synced data from localStorage.
+// Snapshot of all synced data from localStorage. When signed in we also stamp a
+// readable `profile` (name/email/photo) so each Firestore document is
+// identifiable — the document id itself is just the opaque Firebase UID.
 function gather() {
-  return {
+  const data = {
     history: getHistory(),
     favorites: getFavorites(),
     watched: getWatchedMap(),
     settings: getSettings(),
     updatedAt: Date.now(),
   }
+  if (currentUser) {
+    data.profile = {
+      name: currentUser.displayName || '',
+      email: currentUser.email || '',
+      photo: currentUser.photoURL || '',
+      uid: currentUser.uid,
+    }
+  }
+  return data
 }
 
 // Merge two lists of {id, ...} keeping the entry with the newer timestamp.
