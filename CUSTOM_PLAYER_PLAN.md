@@ -139,6 +139,50 @@ main variable is bandwidth, so if usage grows, prefer the fixed-price VPS option
 
 ---
 
+## 3c. Can we build it 100% FREE? (yes — for our own/low-traffic site)
+
+Short answer: **YES.** The only reason "paid" came up is *reliability &
+convenience*, not that free is impossible. The cost of "free" is paid in
+**setup effort, uptime quirks, and maintenance** — not dollars. For just us / a
+small audience, the bandwidth is tiny, so free tiers are plenty.
+
+Everything on the frontend is already free (hls.js, the player UI, static
+Firebase Hosting). Three free ways to run the backend:
+
+**Path A — Free always-on VM (best free option): Oracle Cloud "Always Free"**
+- A real 24/7 ARM VM (up to 4 cores / 24 GB) + ~10 TB/mo egress, **$0 forever**.
+- Runs our scraper + CORS proxy exactly like a paid VPS.
+- Caveats: sign-up/verification can be fiddly, and Oracle may reclaim idle
+  free VMs — so keep a backup plan. This is the closest to "free AND reliable."
+
+**Path B — Free PaaS tiers (easiest, but they sleep/limit): Render / Railway /
+Fly / Koyeb free**
+- Push-to-deploy simple. Fine for personal use.
+- Caveats: free instances **sleep** (cold start ~30–60 s on first play), have
+  monthly limits, and some ToS **frown on heavy video-proxy bandwidth** (risk of
+  throttling/suspension if usage grows).
+
+**Path C — No backend at all (fully free static): public stream API + browser
+hls.js**
+- Use a public "Consumet-style" anime API to fetch the `.m3u8`, then play it in
+  the browser with hls.js — **no server of ours**, stays 100% free static.
+- Caveats: public instances are **frequently down / rate-limited / break often**,
+  and only works when the stream's CORS allows direct browser playback (many
+  don't → still need a proxy). **Least reliable**, but truly zero-cost/zero-infra.
+
+### Recommendation for a free build
+- **Do it free with Path A (Oracle Always Free)** — the only free route that's
+  also always-on. Accept the setup effort.
+- Path B is the quickest to prototype; fine while it's just us testing.
+- Path C only if we want zero infrastructure and can tolerate it breaking.
+
+**Bottom line:** money isn't the blocker — **free is doable**. The real ongoing
+cost is **maintenance** (extractors break when providers change) + the free-tier
+**reliability** trade-off. If it ever gets popular, revisit the ~€4–7/mo paid
+hosts above for stability.
+
+---
+
 ## 4. Decision status
 
 - **Discussed & documented:** 2026-07-16.
