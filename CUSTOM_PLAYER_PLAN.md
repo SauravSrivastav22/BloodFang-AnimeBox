@@ -99,6 +99,46 @@ connections pre-fetch further and small dips don't cause a stall.
 
 ---
 
+## 3b. Cost / host recommendation (for the backend)
+
+The frontend stays **free** (static on Firebase Hosting). Only the **scraper +
+CORS proxy backend** needs a host. The big cost driver isn't CPU — it's
+**bandwidth**, because proxying HLS video segments moves a lot of data. So pick a
+host with generous/cheap egress, and **avoid serverless** (Vercel/Netlify/Lambda)
+for the segment proxy — execution-time limits + metered egress make it the wrong
+tool and potentially the most expensive.
+
+> Bandwidth math: ~1 viewer streaming 1080p ≈ 1.5–3 GB/hour through the proxy.
+> 100 hrs/mo of watching ≈ 150–300 GB egress. Plan the host around that number.
+
+### Options (as of 2026 — verify current pricing before committing)
+
+| Host | Price | Always-on? | Egress | Notes |
+|------|-------|-----------|--------|-------|
+| **Oracle Cloud "Always Free"** | **$0** | Yes | ~10 TB/mo free | Best value: ARM VM (up to 4 cores/24 GB). More setup; account/region availability can be finicky. Genuinely free forever if it stays up. |
+| **Hetzner** CX22 VPS | **~€4/mo** | Yes | 20 TB included | Best paid value for bandwidth; plain VPS (you manage it). EU/US regions. **Recommended paid pick.** |
+| **Contabo** VPS | ~€5/mo | Yes | Unmetered-ish | Very cheap, lots of RAM; support/perf variable. |
+| **Railway** | ~$5/mo credit then usage | Yes | Metered | Easiest deploy (git push). Egress billed — watch the video-proxy bandwidth. |
+| **Render** Starter | ~$7/mo | Yes | 100 GB free then metered | Simple; free tier **sleeps** (cold start ~30–60 s) so not for prod. |
+| **Fly.io** | pay-as-you-go (~$2–5/mo small) | Yes (or scale-to-zero) | Metered | Good DX, edge regions; can scale to zero to save when idle. |
+| ~~Vercel / Netlify / Lambda~~ | serverless | n/a | **metered, pricey** | **Avoid for the segment proxy** — timeouts + expensive egress. (Fine for tiny JSON-only extract endpoints, not for proxying video.) |
+
+### Recommendation
+- **Just to try it / lowest cost:** **Oracle Cloud Always Free** ARM VM — $0, huge
+  free egress. Accept the heavier setup and the "will the free tier stay up"
+  risk.
+- **For something reliable you don't want to babysit:** **Hetzner CX22 (~€4/mo)** —
+  cheapest dependable host with enough bandwidth to actually proxy video; or
+  **Railway (~$5/mo)** if you want push-to-deploy simplicity (just watch egress).
+- **Skip** free tiers that sleep (Render free) for real use, and **skip
+  serverless** for the video proxy.
+
+**Ballpark total:** **$0–$7/month** depending on host + how much gets watched. The
+main variable is bandwidth, so if usage grows, prefer the fixed-price VPS options
+(Hetzner/Contabo/Oracle) over per-GB metered hosts.
+
+---
+
 ## 4. Decision status
 
 - **Discussed & documented:** 2026-07-16.
