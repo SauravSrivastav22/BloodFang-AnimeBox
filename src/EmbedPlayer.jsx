@@ -54,20 +54,13 @@ function initialServerIdx() {
   return i >= 0 ? i : 0
 }
 
-export default function EmbedPlayer({
-  anilistId,
-  malId,
-  episode,
-  dubAvailable = true,
-  // True when we couldn't verify dub (static/hosted build). We still SHOW the Dub
-  // button, but start on Sub so sub-only titles don't open to a blank dub player.
-  dubUnverified = false,
-}) {
+export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = true }) {
   const [serverIdx, setServerIdx] = useState(initialServerIdx)
-  // Default audio = the user's Settings preference, but fall back to Sub when the
-  // title has no dub, the preference is Sub, or dub is unverified.
+  // Default audio = DUB (the user's Settings preference, which defaults to Dub),
+  // unless the title has no dub or the user explicitly set Sub in Settings. If a
+  // dub embed happens to be missing, the user can flip to Sub with the toggle.
   const [type, setType] = useState(() =>
-    dubAvailable && !dubUnverified && getSettings().audio !== 'sub' ? 'dub' : 'sub',
+    dubAvailable && getSettings().audio !== 'sub' ? 'dub' : 'sub',
   )
   const [status, setStatus] = useState('loading') // loading | loaded | timeout
   const [notice, setNotice] = useState('')
