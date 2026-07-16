@@ -1312,6 +1312,10 @@ body {
 /* Account (Google sign-in) control in the header */
 .account-btn {
   flex-shrink: 0;
+  /* Always sit at the far right of the topbar. On the browse header the search
+     bar (flex:1) already pushes it right; on the detail header there's no search
+     bar, so this auto margin keeps it top-right there too. */
+  margin-left: auto;
   padding: 0.5rem 0.9rem;
   border-radius: 10px;
   border: 1px solid var(--accent);
@@ -1331,6 +1335,7 @@ body {
 .account {
   position: relative;
   flex-shrink: 0;
+  margin-left: auto; /* keep the avatar top-right in both headers (see .account-btn) */
 }
 .avatar-btn {
   width: 40px;
@@ -1457,13 +1462,13 @@ body {
     max-width: none;
   }
 
-  /* On mobile the gear/account wrap to the left, so open their popovers to the
-     RIGHT (left-anchored) and clamp width to the viewport — otherwise a
-     right-anchored panel spills off the left edge. */
+  /* The gear/account are pinned top-right (margin-left:auto) in both headers, so
+     open their popovers to the LEFT (right-anchored, like desktop) and clamp the
+     width to the viewport so they never spill off either edge on small screens. */
   .settings-panel,
   .account-menu {
-    right: auto;
-    left: 0;
+    right: 0;
+    left: auto;
     width: min(260px, calc(100vw - 24px));
   }
   .filters {
