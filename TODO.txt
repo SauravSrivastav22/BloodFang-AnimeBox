@@ -270,6 +270,22 @@ LOW VALUE (nice-to-have)
  backend + localhost) — treat a phone as view/manage-list only.
 
 --------------------------------------------------------
+ FUTURE — CUSTOM PLAYER (own hls.js player, buffer control)
+--------------------------------------------------------
+  [ ] BIG / DEFERRED — build our own player to enable buffer
+      pre-load (~2 min ahead, kills mid-play buffering), a real
+      subtitle-language menu, and no pop-up ads.
+      WHY not now: embeds run in a cross-origin iframe we can't
+      control. Needs: hls.js player + a scraper BACKEND to resolve
+      the .m3u8 stream URL + an always-on (paid) Node host (won't
+      run on free static Firebase) + CORS proxy. Higher DMCA risk.
+      The 2-min buffer itself is trivial once we own the player:
+        new Hls({ maxBufferLength: 120, backBufferLength: 60, ... })
+      >>> FULL PLAN: see CUSTOM_PLAYER_PLAN.md <<<
+      DECISION 2026-07-16: user chose option (b) — write the plan;
+      build deferred until we're ready for a paid backend.
+
+--------------------------------------------------------
  STATUS
 --------------------------------------------------------
   Roadmap complete (#1-#8 + blood loader), #9 deploy skipped
