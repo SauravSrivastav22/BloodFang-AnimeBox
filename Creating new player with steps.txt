@@ -1,0 +1,138 @@
+========================================================
+ CREATING OUR OWN VIDEO PLAYER — FULL STEPS (PLAIN GUIDE)
+========================================================
+Created: 2026-07-16
+Cost: $0 (100% free to build and run)
+Status: PLAN — not started yet
+
+Goal: our own player so the video loads ~2 MINUTES AHEAD (no more
+buffering mid-episode). Owning the player also gives a real subtitle-
+language menu and removes pop-up / new-tab ads.
+
+
+--------------------------------------------------------
+ THE BIG PICTURE (why we need each part)
+--------------------------------------------------------
+Right now the video is SOMEONE ELSE'S player trapped in a locked box
+(an iframe). We can't touch it. So we build OUR OWN player — but our
+player needs someone to hand it the raw video link first. That
+"someone" is a small HELPER SERVER we run.
+
+   You click Play
+      -> our helper server finds the real video link (.m3u8)
+      -> our player loads it and buffers 2 min ahead
+
+3 parts: a helper server, our player, and putting it online.
+
+
+--------------------------------------------------------
+ PART A — THE HELPER SERVER (the brain)   [the hard part]
+--------------------------------------------------------
+STEP 1 — Make an endpoint that returns a video link.
+   A small web address on our own server, like:
+      /api/stream?anime=21&ep=1069&type=dub
+   Our player calls it, the server finds the real .m3u8 and replies:
+      { "video": "https://somecdn.../master.m3u8", "subtitles": [...] }
+
+STEP 2 — Teach it HOW to find that link (the extractor / scraper).
+   It visits the anime source behind the scenes, reads where the real
+   video lives, and grabs the .m3u8. We can reuse an open-source
+   resolver so we don't write this from scratch.
+
+STEP 3 — Remember links for a few minutes (cache).
+   These links expire fast -> store each for ~5-10 min so we don't
+   re-scrape on every click.
+
+STEP 4 — Add a "fallback" answer.
+   If the scraper can't find it, reply { ok: false } -> the app shows
+   the OLD embed player instead. Nothing ever fully breaks.
+
+DONE WHEN: visiting /api/stream?anime=21&ep=1069&type=dub shows a real
+video link.
+
+
+--------------------------------------------------------
+ PART B — GET THE VIDEO PAST THE "CORS" WALL
+--------------------------------------------------------
+STEP 5 — Add a proxy.
+   Some video servers refuse to play on other websites (a browser rule
+   called CORS). Fix: our server RELAYS the video through itself:
+      /api/proxy?url=<the-real-video-piece>
+   The video flows THROUGH our server to your screen, so the browser
+   stops complaining.
+
+DONE WHEN: the link from Part A actually plays with no errors.
+
+
+--------------------------------------------------------
+ PART C — OUR OWN PLAYER (the part you see)
+--------------------------------------------------------
+STEP 6 — Install the player engine.
+      npm install hls.js vidstack
+   hls.js  = the engine that plays video and controls buffering.
+   vidstack = nice controls (play, volume, captions, fullscreen).
+
+STEP 7 — Create NativePlayer.jsx. It does 4 things:
+   1) Calls /api/stream to get the video link.
+   2) Starts hls.js with the 2-MINUTE BUFFER setting (the whole point):
+         new Hls({ maxBufferLength: 120 })   // load ~2 min ahead
+   3) Adds the subtitle-language menu from the returned tracks.
+   4) Plays the video.
+
+STEP 8 — Add it as a new "Server" button.
+   In the controls you already have (Vidnest / VidLink), add a
+   "Native (beta)" button. If Native works -> 2-min buffer + no ads.
+   If it fails -> auto-fall back to the old embed. The app stays
+   working the whole time.
+
+DONE WHEN: clicking "Native" plays the episode in OUR player, buffered
+2 min ahead, with real subtitles and no pop-ups.
+
+
+--------------------------------------------------------
+ PART D — PUT THE SERVER ONLINE FOR FREE
+--------------------------------------------------------
+Right now the helper server only runs on your PC. It needs a permanent
+home.
+
+STEP 9 — Get a free Oracle Cloud "Always Free" server.
+   1) Sign up at Oracle Cloud -> choose Always Free tier.
+   2) Create a free Linux VM (their ARM machine, runs 24/7, $0 forever).
+   3) Install Node, copy our server code onto it, run it with pm2
+      (keeps it alive / auto-restarts).
+   4) Put Caddy in front for a clean https:// address (free, automatic).
+
+STEP 10 — Point the app at it.
+   In BloodFang settings, set the server address:
+      VITE_STREAM_API=https://api.your-address...
+   Rebuild and deploy. The app now talks to your free 24/7 server.
+
+DONE WHEN: anyone on any device can use the Native player, powered by
+your free server.
+
+
+--------------------------------------------------------
+ THE ORDER WE ACTUALLY DO IT (milestones)
+--------------------------------------------------------
+   M1 — server returns a real video link          (Part A)
+   M2 — video plays through the proxy             (Part B)
+   M3 — our player works: 2-min buffer + subtitles (Part C)
+   M4 — server hosted free on Oracle              (Part D)
+   M5 — test everything + confirm embed fallback
+   M6 — polish (buffer slider, autoplay next)
+
+
+--------------------------------------------------------
+ THE HONEST SUMMARY
+--------------------------------------------------------
+   Money:        $0 the whole way.
+   Hardest step: Step 2 (the scraper) — needs occasional fixing when
+                 providers change their sites.
+   Safety net:   the old embed player always stays as a fallback, so
+                 the app never goes fully down.
+   Only cost risk: if the site gets popular (many people streaming at
+                 once = more bandwidth than the free tier). Just for
+                 you / a few people = free forever.
+
+Next move when ready: start at M1 — build the helper server (/api/stream).
+Full technical version of this plan: see CUSTOM_PLAYER_PLAN.md
