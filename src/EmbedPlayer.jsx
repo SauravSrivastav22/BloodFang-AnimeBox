@@ -156,15 +156,20 @@ export default function EmbedPlayer({
       {notice && <p className="embed-notice">⚠ {notice}</p>}
 
       <p className="embed-note">
-        ▶ Playing “{server.label}”. If the player is blank or says “couldn’t find this
-        episode”, click <strong>Not playing? Try next server</strong> or pick another
-        Server. These free sources are volatile and may show ads.
+        ▶ Playing “{server.label}”. Pop-up/new-tab ads are blocked here. If the player
+        is blank or says “couldn’t find this episode”, click{' '}
+        <strong>Not playing? Try next server</strong> or pick another Server. These
+        free sources are volatile and may still show in-frame ads.
       </p>
 
       <div className="embed-frame">
-        {/* No `sandbox` attribute: these embed players detect it and refuse to
-            run ("Please Disable Sandbox"). The trade-off is the source can open
-            popups/ads — unavoidable with free anime embeds. */}
+        {/* Pop-up blocker: the sandbox OMITS `allow-popups` and
+            `allow-top-navigation`, so the free providers' ad scripts can no
+            longer open new tabs or hijack this page on click — the #1 annoyance
+            while watching. We still grant `allow-scripts allow-same-origin`
+            (plus forms/presentation/fullscreen) so the actual player keeps
+            running. If a provider ever refuses to load under sandbox, the user
+            can pick another Server or use "Open in new tab ↗". */}
         <iframe
           key={src}
           src={src}
@@ -172,6 +177,7 @@ export default function EmbedPlayer({
           onLoad={onFrameLoad}
           allowFullScreen
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-orientation-lock"
           referrerPolicy="origin"
         />
         {status === 'loading' && (
