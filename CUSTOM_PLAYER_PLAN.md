@@ -1,210 +1,223 @@
-# BloodFang — Custom Player Plan & Session Notes
+# BloodFang — Custom Player: Step-by-Step Build Plan
 
-_Last updated: 2026-07-16_
+_Created: 2026-07-16 · Status: PLANNED (not started)_
 
-This file records what we discussed about streaming/buffering and the plan to
-build our **own** video player (so we don't lose the context).
+Our own video player so we can control the stream — the goal that started this:
+**pre-load ~2 minutes ahead so buffering stops mid-episode**. Owning the player
+also unlocks a real subtitle-language menu and removes pop-up/new-tab ads.
 
----
-
-## 1. Why the buffer / pre-load can't be controlled today
-
-Right now BloodFang **does not host or control the video**. When you press play,
-the player you see is a **third-party player inside a cross-origin `<iframe>`**
-(Vidnest / VidLink). That provider's player owns:
-
-- how many seconds it buffers ahead,
-- video quality / ABR,
-- the ads, the subtitle CC menu — **everything**.
-
-Browser security (same-origin policy) means **our JavaScript cannot reach inside
-that iframe**. Same wall that blocked:
-- the pop-up/new-tab ad fix (sandbox breaks their anti-adblock → "Please Disable
-  Sandbox"), and
-- adding a subtitle-language dropdown.
-
-**Result:** we cannot tell their player "buffer 2 minutes ahead." That knob is in
-*their* code.
-
-### User's actual request (keep for reference)
-> While streaming, the video should pre-load at least ~2 minutes ahead of the
-> current position (e.g. watching at 5:45 → buffered out to ~7:45) when the
-> connection is good, so buffering doesn't interrupt playback.
-
-This is a **valid, standard idea** — it's just not reachable through an embed.
+> **Why we need this:** today the video is a third-party player inside a
+> cross-origin `<iframe>` (Vidnest/VidLink). Browser security blocks us from
+> touching anything inside it — buffer, subtitles, ads. To control those, we must
+> play the raw stream in **our own** player instead of embedding theirs.
 
 ---
 
-## 2. The custom player — IS it possible? YES.
+## 0. The goal in one line of code
 
-Building our own player is feasible. It requires moving from "embed someone
-else's player" to "play the raw stream ourselves." That's a real
-re-architecture, not a toggle.
-
-### What it needs
-| Piece | Detail |
-|-------|--------|
-| **Own player** | `hls.js` + a UI (Plyr / Vidstack / custom). Then we set the forward buffer directly. |
-| **The real stream URL** | The `.m3u8` (HLS) URL. Providers hide this inside their player, so we need a **scraper/extractor** to resolve it per episode. |
-| **A backend server** | The scraper must run server-side (CORS + obfuscation). Cannot run on the current **free static Firebase Hosting** — needs an always-on Node host (Render/Railway/Fly/VPS), likely **paid**. |
-| **CORS proxy** | Many stream CDNs block cross-origin playback; often need to proxy segments through our server. |
-| **Legal note** | Scraping + re-serving streams is a bigger DMCA/ToS exposure than embedding. Repo is public. |
-
-### The part the user wants (the 2-min buffer) — trivial ONCE we own the player
-With `hls.js` we just configure the forward buffer, e.g.:
+Once we own the player, the 2-minute buffer is just an hls.js config:
 
 ```js
 const hls = new Hls({
-  maxBufferLength: 120,      // seconds of forward buffer to keep (~2 min) when bandwidth allows
-  maxMaxBufferLength: 240,   // hard ceiling (~4 min)
-  maxBufferSize: 120 * 1000 * 1000, // ~120 MB cap so we don't over-buffer on huge streams
-  backBufferLength: 60,      // keep 1 min behind for instant rewind
+  maxBufferLength: 120,              // keep ~2 min buffered ahead when bandwidth allows
+  maxMaxBufferLength: 240,           // hard ceiling ~4 min
+  maxBufferSize: 120 * 1000 * 1000,  // ~120 MB cap
+  backBufferLength: 60,              // keep 1 min behind for instant rewind
 })
-hls.loadSource(streamUrl)    // the resolved .m3u8
-hls.attachMedia(videoEl)
 ```
 
-`maxBufferLength: 120` = exactly "load ~2 minutes ahead when the internet is
-good." hls.js already buffers adaptively; this raises the target so good
-connections pre-fetch further and small dips don't cause a stall.
+Everything below exists to get us to the point where we can run that.
 
 ---
 
-## 3. Rough build steps (when we decide to do it)
+## 1. Architecture (what we're building)
 
-1. **Backend** (new Node service, always-on host):
-   - `GET /stream?anilist=<id>&ep=<n>&type=sub|dub` → resolve provider → return
-     `{ m3u8, subtitles[], headers }`.
-   - Add a `/proxy` route for CORS'd HLS segments if needed.
-   - Reuse the existing server cache pattern to avoid re-scraping.
-2. **Frontend** — new `HlsPlayer.jsx`:
-   - Replace `EmbedPlayer` (or add as "Server: Native (beta)" alongside embeds).
-   - hls.js with the buffer config above; Plyr/Vidstack for controls, quality,
-     subtitle tracks (real language menu becomes possible here!).
-   - Keep the embed servers as fallback when extraction fails.
-3. **Wire settings** — buffer length could even be a Settings slider later.
-4. **Deploy** — frontend still static on Firebase; backend on the paid host;
-   point the app at the backend URL via env.
+```
+  Browser (BloodFang, static on Firebase — FREE)
+        │
+        │  1) "give me the stream for anime 21, ep 1069, dub"
+        ▼
+  Our Backend  (Node/Express on a FREE always-on host)
+        │  2) scrape/resolve the provider → real .m3u8 URL + subtitle tracks
+        │  3) return { m3u8, subtitles[], headers }
+        ▼
+  Browser plays it with OUR hls.js player
+        │  4) video segments (.ts/.m4s) —
+        ▼      proxied through our backend if the CDN blocks CORS
+  Stream CDN
+```
 
-### Bonus wins this unlocks (things also blocked today)
-- Real **subtitle-language** menu (Eng/others) from the stream's tracks.
-- **No pop-up/new-tab ads** (we control the DOM now).
-- **Buffer-ahead / instant rewind** (the request that started this).
-- Consistent UI, remember-position, next-episode autoplay, etc.
-
-### Trade-offs / costs
-- A **paid always-on server** (free tiers sleep and add cold-start lag).
-- **Maintenance**: extractors break when providers change — ongoing upkeep.
-- **Legal**: higher exposure than embeds (public repo).
+**Two new pieces:** a **backend** (resolver + CORS proxy) and a **frontend
+player** (hls.js). The rest of BloodFang stays exactly as-is.
 
 ---
 
-## 3b. Cost / host recommendation (for the backend)
+## 2. Tech stack
 
-The frontend stays **free** (static on Firebase Hosting). Only the **scraper +
-CORS proxy backend** needs a host. The big cost driver isn't CPU — it's
-**bandwidth**, because proxying HLS video segments moves a lot of data. So pick a
-host with generous/cheap egress, and **avoid serverless** (Vercel/Netlify/Lambda)
-for the segment proxy — execution-time limits + metered egress make it the wrong
-tool and potentially the most expensive.
-
-> Bandwidth math: ~1 viewer streaming 1080p ≈ 1.5–3 GB/hour through the proxy.
-> 100 hrs/mo of watching ≈ 150–300 GB egress. Plan the host around that number.
-
-### Options (as of 2026 — verify current pricing before committing)
-
-| Host | Price | Always-on? | Egress | Notes |
-|------|-------|-----------|--------|-------|
-| **Oracle Cloud "Always Free"** | **$0** | Yes | ~10 TB/mo free | Best value: ARM VM (up to 4 cores/24 GB). More setup; account/region availability can be finicky. Genuinely free forever if it stays up. |
-| **Hetzner** CX22 VPS | **~€4/mo** | Yes | 20 TB included | Best paid value for bandwidth; plain VPS (you manage it). EU/US regions. **Recommended paid pick.** |
-| **Contabo** VPS | ~€5/mo | Yes | Unmetered-ish | Very cheap, lots of RAM; support/perf variable. |
-| **Railway** | ~$5/mo credit then usage | Yes | Metered | Easiest deploy (git push). Egress billed — watch the video-proxy bandwidth. |
-| **Render** Starter | ~$7/mo | Yes | 100 GB free then metered | Simple; free tier **sleeps** (cold start ~30–60 s) so not for prod. |
-| **Fly.io** | pay-as-you-go (~$2–5/mo small) | Yes (or scale-to-zero) | Metered | Good DX, edge regions; can scale to zero to save when idle. |
-| ~~Vercel / Netlify / Lambda~~ | serverless | n/a | **metered, pricey** | **Avoid for the segment proxy** — timeouts + expensive egress. (Fine for tiny JSON-only extract endpoints, not for proxying video.) |
-
-### Recommendation
-- **Just to try it / lowest cost:** **Oracle Cloud Always Free** ARM VM — $0, huge
-  free egress. Accept the heavier setup and the "will the free tier stay up"
-  risk.
-- **For something reliable you don't want to babysit:** **Hetzner CX22 (~€4/mo)** —
-  cheapest dependable host with enough bandwidth to actually proxy video; or
-  **Railway (~$5/mo)** if you want push-to-deploy simplicity (just watch egress).
-- **Skip** free tiers that sleep (Render free) for real use, and **skip
-  serverless** for the video proxy.
-
-**Ballpark total:** **$0–$7/month** depending on host + how much gets watched. The
-main variable is bandwidth, so if usage grows, prefer the fixed-price VPS options
-(Hetzner/Contabo/Oracle) over per-GB metered hosts.
+| Layer | Choice | Notes |
+|-------|--------|-------|
+| Player core | **hls.js** | Buffer control, quality, subtitle tracks |
+| Player UI | **Vidstack** (or Plyr) | Nice controls, captions, keyboard; React-friendly |
+| Backend | **Node + Express** | Reuse our existing `server/` patterns + cache |
+| Extractor | scraper module (per provider) | Resolves the `.m3u8`; the fragile part |
+| Host | **Oracle Cloud "Always Free" VM** | 24/7, ~$0, ~10 TB/mo egress (see §6) |
+| Frontend host | **Firebase Hosting** (unchanged) | Still free static |
 
 ---
 
-## 3c. Can we build it 100% FREE? (yes — for our own/low-traffic site)
+## 3. PHASE 1 — Backend: stream resolver (the hard part)
 
-Short answer: **YES.** The only reason "paid" came up is *reliability &
-convenience*, not that free is impossible. The cost of "free" is paid in
-**setup effort, uptime quirks, and maintenance** — not dollars. For just us / a
-small audience, the bandwidth is tiny, so free tiers are plenty.
+**Goal:** an endpoint that turns (anime id, episode, sub/dub) into a playable
+`.m3u8` URL + subtitle tracks.
 
-Everything on the frontend is already free (hls.js, the player UI, static
-Firebase Hosting). Three free ways to run the backend:
+Steps:
+1. **Scaffold** a new service (or extend `server/`):
+   - `GET /api/stream?anilist=<id>&ep=<n>&type=sub|dub`
+   - Response: `{ ok, m3u8, subtitles: [{lang, url}], headers }`
+2. **Pick a source strategy** (choose one to start, add more later):
+   - **Self-hosted extractor** (e.g. a Consumet-style resolver we run) — most
+     control, most maintenance.
+   - **Reverse a provider** (Vidnest/VidLink/other) to read its `.m3u8` — fragile,
+     breaks when they change.
+3. **Cache** resolved URLs briefly (reuse `server/index.js cached()`), because
+   stream links expire — short TTL (e.g. 5–10 min).
+4. **Return subtitle tracks** when the source exposes them (this is what makes a
+   real language menu possible).
+5. **Handle failure** gracefully: `{ ok:false }` → frontend falls back to the old
+   embed player.
 
-**Path A — Free always-on VM (best free option): Oracle Cloud "Always Free"**
-- A real 24/7 ARM VM (up to 4 cores / 24 GB) + ~10 TB/mo egress, **$0 forever**.
-- Runs our scraper + CORS proxy exactly like a paid VPS.
-- Caveats: sign-up/verification can be fiddly, and Oracle may reclaim idle
-  free VMs — so keep a backup plan. This is the closest to "free AND reliable."
-
-**Path B — Free PaaS tiers (easiest, but they sleep/limit): Render / Railway /
-Fly / Koyeb free**
-- Push-to-deploy simple. Fine for personal use.
-- Caveats: free instances **sleep** (cold start ~30–60 s on first play), have
-  monthly limits, and some ToS **frown on heavy video-proxy bandwidth** (risk of
-  throttling/suspension if usage grows).
-
-**Path C — No backend at all (fully free static): public stream API + browser
-hls.js**
-- Use a public "Consumet-style" anime API to fetch the `.m3u8`, then play it in
-  the browser with hls.js — **no server of ours**, stays 100% free static.
-- Caveats: public instances are **frequently down / rate-limited / break often**,
-  and only works when the stream's CORS allows direct browser playback (many
-  don't → still need a proxy). **Least reliable**, but truly zero-cost/zero-infra.
-
-### Recommendation for a free build
-- **Do it free with Path A (Oracle Always Free)** — the only free route that's
-  also always-on. Accept the setup effort.
-- Path B is the quickest to prototype; fine while it's just us testing.
-- Path C only if we want zero infrastructure and can tolerate it breaking.
-
-**Bottom line:** money isn't the blocker — **free is doable**. The real ongoing
-cost is **maintenance** (extractors break when providers change) + the free-tier
-**reliability** trade-off. If it ever gets popular, revisit the ~€4–7/mo paid
-hosts above for stability.
+**Deliverable:** hitting `/api/stream?anilist=21&ep=1069&type=dub` returns a JSON
+with a working `.m3u8`.
 
 ---
 
-## 4. Decision status
+## 4. PHASE 2 — Backend: CORS segment proxy
 
-- **Discussed & documented:** 2026-07-16.
-- **Decision:** DEFERRED — current app stays on the embed players (free, static,
-  lower risk). Custom player is a **future project** to be scoped when we're
-  ready to add a paid backend.
-- **Meanwhile:** for buffering, switching **Server (Vidnest ↔ VidLink)** changes
-  the CDN and often helps most.
+Many stream CDNs block cross-origin playback (browser can't fetch the segments
+directly). Fix: proxy them through our backend.
+
+Steps:
+1. Add `GET /api/proxy?url=<segment-or-playlist-url>` that streams the remote
+   resource back with `Access-Control-Allow-Origin: *`.
+2. Rewrite the `.m3u8` so segment URLs point at `/api/proxy?url=...`.
+3. **Forward required headers** (Referer/Origin/User-Agent) the CDN expects.
+4. **Stream, don't buffer** the whole file (pipe response) to keep memory low.
+5. Watch bandwidth — this route carries all the video (see cost §6).
+
+**Deliverable:** the `.m3u8` from Phase 1 plays end-to-end through the proxy with
+no CORS errors.
 
 ---
 
-## 5. This session's completed work (2026-07-16) — for the record
+## 5. PHASE 3 — Frontend: our hls.js player
 
-- ✅ Google login + cross-device **cloud sync** (Firebase Auth + Firestore) — LIVE.
-- ✅ Per-user Firestore security rules (`auth.uid == users/{uid}`).
-- ✅ `profile` (name/email/photo/uid) stamped on each user doc.
-- ✅ Account/Sign-in button pinned **top-right** in both headers + responsive
-  mobile popovers.
-- ✅ Player **pop-up ad** investigation: sandbox blocks them but breaks playback
-  ("Please Disable Sandbox") → reverted; added in-player **uBlock Origin** tip.
-- ✅ Default audio = **Dub** (hosted build too).
-- ✅ Subtitle-language note pointing to the player's own CC/⚙ menu.
-- ✅ Language selector (Eng/Hindi/JP) — NOT feasible for anime beyond Sub/Dub via
-  embeds (sources don't carry those tracks / can't reach the iframe) — dropped.
-- ▶️ **Buffer / 2-min pre-load** → this doc (needs the custom player above).
+**Goal:** a `NativePlayer.jsx` that plays the resolved stream with the 2-min
+buffer.
+
+Steps:
+1. `npm i hls.js` (+ `vidstack` or `plyr` for UI).
+2. New `src/NativePlayer.jsx`:
+   - Fetch `/api/stream?...` → get `m3u8` + subtitles.
+   - Create hls.js with the **buffer config from §0**.
+   - `hls.loadSource(m3u8)` → `hls.attachMedia(videoEl)`.
+   - Add subtitle `<track>`s from the returned `subtitles[]` → **real language
+     menu**.
+   - Native HLS fallback for Safari/iOS (`video.canPlayType('application/vnd.apple.mpegurl')`).
+3. **Wire into `EmbedPlayer` as a new server option** — add "Native (beta)" to the
+   Server switch, keep Vidnest/VidLink as fallback. If Native fails → auto-fall
+   back to an embed. This keeps the app working the whole time.
+4. Carry over existing niceties: remember-position, next-episode, Sub/Dub toggle
+   (now real audio tracks / re-resolve), keyboard shortcuts.
+5. (Optional) A **Settings slider** for buffer length (30 s – 4 min).
+
+**Deliverable:** picking "Native" plays the episode in our player, buffered ~2
+min ahead, with a working subtitle menu and no pop-up ads.
+
+---
+
+## 6. PHASE 4 — Hosting: Oracle Cloud "Always Free" (the FREE path)
+
+The frontend stays free on Firebase. Only the backend needs a home. Cheapest
+always-on option is Oracle's free VM.
+
+Steps:
+1. Create an **Oracle Cloud** account → **Always Free** tier.
+2. Launch a free **ARM (Ampere) VM** (e.g. 2 cores / 12 GB, Ubuntu).
+3. Open the firewall / security list for the app port (e.g. 8080) + 80/443.
+4. Install Node, clone the backend, run it under **pm2** (auto-restart).
+5. Put **Caddy or Nginx** in front for HTTPS (Let's Encrypt) → a clean
+   `https://api.bloodfang...` URL. (A free domain or DuckDNS works.)
+6. In BloodFang, set the backend base URL via env (`VITE_STREAM_API=...`);
+   rebuild `npm run build:static`; `firebase deploy --only hosting`.
+
+**Free alternatives (if Oracle is a pain):**
+- **Railway / Render / Fly / Koyeb free tier** — push-to-deploy, but they *sleep*
+  (cold start ~30–60 s) and may limit heavy video bandwidth.
+- **No-backend Path C** — public stream API + browser hls.js (zero infra, least
+  reliable; breaks often).
+
+**Cost:** **$0** on Oracle Always Free (~10 TB/mo egress is plenty for us). Paid
+fallback if it ever gets popular: **Hetzner CX22 ~€4/mo** (20 TB) or **Railway
+~$5/mo**. Do **not** use serverless (Vercel/Netlify/Lambda) for the video proxy —
+timeouts + metered egress make it the wrong tool.
+
+> Bandwidth reality: ~1.5–3 GB/hr per 1080p viewer through the proxy. Just us =
+> negligible; a crowd = revisit the paid VPS options.
+
+---
+
+## 7. PHASE 5 — Test & verify
+
+- [ ] `/api/stream` returns a valid `.m3u8` for sub AND dub on several titles
+      (One Piece deep ep, a movie, a new season).
+- [ ] Stream plays through `/api/proxy` with no CORS errors.
+- [ ] Buffer really reaches ~2 min ahead on a good connection (check
+      `video.buffered` / hls stats).
+- [ ] Subtitle language menu shows + switches tracks.
+- [ ] No pop-up/new-tab ads (we own the DOM now).
+- [ ] Native fails → auto-falls back to the embed player (no dead end).
+- [ ] Works on desktop + mobile (iOS native HLS path).
+
+---
+
+## 8. Maintenance (the real ongoing cost)
+
+- Extractors **break when providers change their site** → periodic fixes.
+- Keep the **embed players as a permanent fallback** so a broken extractor never
+  takes the whole app down.
+- Stream URLs **expire** → keep resolver TTL short; re-resolve on playback error.
+- Watch host **uptime/bandwidth**; Oracle can reclaim idle free VMs — keep the
+  deploy scripted so re-standing-up is quick.
+
+---
+
+## 9. Milestone checklist (build order)
+
+- [ ] **M1** — `/api/stream` resolves a real `.m3u8` (Phase 1)
+- [ ] **M2** — `/api/proxy` plays it past CORS (Phase 2)
+- [ ] **M3** — `NativePlayer.jsx` plays with 2-min buffer + subtitles (Phase 3)
+- [ ] **M4** — deployed on Oracle free VM behind HTTPS, wired via env (Phase 4)
+- [ ] **M5** — tested + embed fallback confirmed (Phase 5)
+- [ ] **M6** — (optional) buffer-length Settings slider, autoplay-next polish
+
+---
+
+## 10. Decision / risks recap
+
+- **Feasible & free?** Yes — Oracle Always Free covers the backend at $0; hls.js +
+  Firebase static are already free. Money is not the blocker.
+- **Real costs:** setup effort + ongoing extractor maintenance + free-tier
+  reliability + higher DMCA/ToS exposure (repo is public).
+- **Decision (2026-07-16):** plan documented; **build deferred** until we choose to
+  start. When we do, follow M1 → M6 in order.
+- **Meanwhile:** on the current embed player, switching **Server (Vidnest ↔
+  VidLink)** changes the CDN and helps buffering most.
+
+---
+
+## Appendix — this session's shipped work (2026-07-16)
+
+Already LIVE on https://bloodfang-anime.web.app (not part of this plan, just
+record): Google login + cloud sync (Firebase Auth/Firestore), per-user rules,
+profile on each doc, account button top-right + responsive, default audio = Dub,
+pop-up investigation (reverted sandbox + uBlock tip), subtitle-language note.
