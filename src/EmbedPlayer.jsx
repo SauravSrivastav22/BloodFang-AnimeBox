@@ -149,9 +149,12 @@ export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = 
       {notice && <p className="embed-notice">⚠ {notice}</p>}
 
       <p className="embed-note">
-        ▶ Playing “{server.label}”. If the player is blank or says “couldn’t find this
-        episode”, click <strong>Not playing? Try next server</strong> or pick another
-        Server. These free sources are volatile and may show ads.
+        ▶ Playing “{server.label}”. Use <strong>Sub/Dub</strong> above for audio. For
+        the <strong>subtitle language</strong> (if the title has more than one), open
+        the player’s own <strong>CC / ⚙ menu</strong> at the bottom-right of the video.
+        If the player is blank or says “couldn’t find this episode”, click{' '}
+        <strong>Not playing? Try next server</strong> or pick another Server. These free
+        sources are volatile and may show ads.
       </p>
       <p className="embed-tip" data-no-loader>
         💡 These free servers open pop-up/new-tab ads on click — that’s the provider,
