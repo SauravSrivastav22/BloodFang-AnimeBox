@@ -356,6 +356,70 @@ app.get(
   }),
 )
 
+// ─── M1 · Custom-player stream resolver ──────────────────────────────────────
+// Turns (AniList id, episode number, sub/dub) into a real .m3u8 URL + subtitle
+// tracks so OUR OWN hls.js player (M3) can play it with a 2-min pre-load buffer,
+// a real subtitle-language menu, and no pop-up ads. Built on the same
+// AniList→HiAnime mapper the rest of the server already uses.
+//
+//   GET /api/stream?anilist=<id>&ep=<n>&type=sub|dub
+//   →   { ok:true, m3u8, subtitles:[{lang,url}], headers, provider, type }
+//   or  { ok:false, error }   ← frontend falls back to the embed player
+//
+// Stream links expire quickly, so results are cached only briefly. Failures are
+// NOT cached, so a retry can still succeed after a transient provider hiccup.
+const CACHE_STREAM = 5 * 60 * 1000
+
+async function resolveStream({ anilistId, episode, type }) {
+  const dub = type === 'dub'
+  // 1) Map the AniList id → provider episode list. Dub episodes have their own
+  //    ids on HiAnime, so we ask for the dub list when type=dub.
+  const info = await withTimeout(anilist.fetchAnimeInfo(anilistId, dub), 15000, 'anime info')
+  const episodes = info?.episodes ?? []
+  const match = episodes.find((e) => Number(e.number) === Number(episode))
+  if (!match) throw new Error(`Episode ${episode} not found (${dub ? 'dub' : 'sub'})`)
+  // 2) Resolve the real stream sources for that episode.
+  const data = await withTimeout(anilist.fetchEpisodeSources(match.id), 15000, 'episode sources')
+  const sources = data?.sources ?? []
+  // Prefer the adaptive "auto" HLS playlist (lets hls.js pick quality), then any
+  // m3u8, then whatever the provider gave us.
+  const m3u8 =
+    sources.find((s) => s.quality === 'auto' && s.isM3U8)?.url ||
+    sources.find((s) => s.isM3U8)?.url ||
+    sources[0]?.url
+  if (!m3u8) throw new Error('No playable stream found')
+  return {
+    ok: true,
+    m3u8,
+    // Subtitle tracks power the real language menu in our player (M3).
+    subtitles: (data?.subtitles ?? [])
+      .filter((s) => s?.url && (s.lang || '').toLowerCase() !== 'thumbnails')
+      .map((s) => ({ lang: s.lang, url: s.url })),
+    // The CDN often needs these (Referer/Origin) — the M2 proxy will forward them.
+    headers: data?.headers ?? {},
+    provider: 'hianime',
+    type: dub ? 'dub' : 'sub',
+  }
+}
+
+app.get(
+  '/api/stream',
+  route(async (req) => {
+    const anilistId = Number(req.query.anilist)
+    const episode = Number(req.query.ep)
+    const type = req.query.type === 'dub' ? 'dub' : 'sub'
+    if (!anilistId || !episode) return { ok: false, error: 'anilist and ep are required' }
+    const key = `stream:${anilistId}:${episode}:${type}`
+    try {
+      return await cached(key, CACHE_STREAM, () => resolveStream({ anilistId, episode, type }))
+    } catch (err) {
+      // Graceful fallback: never 502 here — the frontend reads ok:false and drops
+      // back to the embed player, so the app never dead-ends on a broken source.
+      return { ok: false, error: err?.message || 'Could not resolve stream' }
+    }
+  }),
+)
+
 // In production, this one server also serves the built React app (dist/), so the
 // whole thing runs on a single port with no Vite. In dev there's no build, so we
 // skip this and the Vite dev server handles the UI on :5173.

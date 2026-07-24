@@ -193,12 +193,31 @@ timeouts + metered egress make it the wrong tool.
 
 ## 9. Milestone checklist (build order)
 
-- [ ] **M1** — `/api/stream` resolves a real `.m3u8` (Phase 1)
+- [~] **M1** — `/api/stream` resolves a real `.m3u8` (Phase 1) — **CODE DONE**, live
+      verification deferred to M4 (see note below)
 - [ ] **M2** — `/api/proxy` plays it past CORS (Phase 2)
 - [ ] **M3** — `NativePlayer.jsx` plays with 2-min buffer + subtitles (Phase 3)
 - [ ] **M4** — deployed on Oracle free VM behind HTTPS, wired via env (Phase 4)
+      — **verify M1 here** (sources aren't blocked from a datacenter IP)
 - [ ] **M5** — tested + embed fallback confirmed (Phase 5)
 - [ ] **M6** — (optional) buffer-length Settings slider, autoplay-next polish
+
+### M1 status note (2026-07-24)
+
+`/api/stream` was built on the existing AniList→HiAnime Consumet mapper
+(`server/index.js`). The endpoint, short-TTL cache, and `{ok:false}` fallback are
+done and lint-clean. **It could NOT be verified from the dev machine** because
+every anime source domain (hianime.to, animepahe, animekai, …) is unreachable
+from this home connection: `hianime.to` returns HTTP 000 (TCP/SNI blocked) while
+its mirror `aniwatch.to` returns 200, and DNS resolves fine — the signature of
+ISP / Cloudflare domain blocking, not a code bug. Both Consumet and the
+`aniwatch` scraper hardcode the blocked domain, so neither resolves locally.
+
+**Decision (user):** this is exactly why the resolver belongs on the cloud host.
+Keep the M1 code as-is and verify it end-to-end at **M4**, running on the Oracle
+free VM (foreign datacenter IP → sources reachable). If Consumet's providers are
+still rotted there, swap the resolver to the maintained **`aniwatch`** npm package
+(dedicated HiAnime scraper) — the `/api/stream` contract stays identical.
 
 ---
 
