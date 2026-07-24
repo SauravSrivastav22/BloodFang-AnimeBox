@@ -197,11 +197,14 @@ timeouts + metered egress make it the wrong tool.
       verification deferred to M4 (see note below)
 - [ ] **M2** — `/api/proxy` plays it past CORS (Phase 2)
 - [ ] **M3** — `NativePlayer.jsx` plays with 2-min buffer + subtitles (Phase 3)
-- [~] **M4** — deployed on Oracle free VM behind HTTPS, wired via env (Phase 4)
-      — **verify M1 here** (sources aren't blocked from a datacenter IP).
-      **Deploy kit written** → `deploy/` (setup.sh, ecosystem.config.cjs,
-      Caddyfile, update.sh) + step-by-step `deploy/ORACLE_SETUP.md`. Waiting on
-      the user to create the Oracle VM, then run it.
+- [~] **M4** — deploy the backend so **M1 gets verified** (datacenter IP reaches
+      the sources blocked at home). Two kits written:
+      - **No-card (chosen):** `Dockerfile` + `render.yaml` + `deploy/DEPLOY_FREE.md`
+        → push-to-deploy on **Koyeb/Render**, no credit card. Oracle was blocked
+        for this user — RuPay isn't accepted (Visa/MC/Amex only). Waiting on the
+        user to connect GitHub on Koyeb/Render.
+      - **Oracle (alt):** `deploy/` (setup.sh, ecosystem.config.cjs, Caddyfile,
+        update.sh) + `deploy/ORACLE_SETUP.md` — needs a Visa/MC card.
 - [ ] **M5** — tested + embed fallback confirmed (Phase 5)
 - [ ] **M6** — (optional) buffer-length Settings slider, autoplay-next polish
 

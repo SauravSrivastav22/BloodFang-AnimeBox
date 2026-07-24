@@ -1,0 +1,14 @@
+# One-click Render blueprint for the BloodFang backend (no credit card needed).
+# In Render: New → Blueprint → connect this repo → it reads this file.
+# Or deploy manually (see deploy/DEPLOY_FREE.md).
+services:
+  - type: web
+    name: bloodfang-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free # free tier: sleeps after ~15 min idle, wakes on next request
+    region: singapore # closest free region to India; change if you prefer
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
