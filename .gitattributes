@@ -1,0 +1,4 @@
+# Keep shell scripts LF so they run on the Linux (Oracle) server. A CRLF shebang
+# breaks with "bad interpreter: /bin/bash^M".
+*.sh text eol=lf
+deploy/Caddyfile text eol=lf

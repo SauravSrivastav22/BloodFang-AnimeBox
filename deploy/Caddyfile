@@ -1,0 +1,27 @@
+# Caddy reverse proxy → automatic HTTPS (Let's Encrypt) for the BloodFang API.
+#
+# Replace api.YOURNAME.duckdns.org with YOUR real domain (see ORACLE_SETUP.md
+# Part 3 for a free DuckDNS subdomain). Caddy fetches + renews the TLS cert
+# automatically as long as this domain points at the VM's public IP and ports
+# 80 + 443 are open.
+#
+# Install to /etc/caddy/Caddyfile, then:  sudo systemctl reload caddy
+
+api.YOURNAME.duckdns.org {
+	# All traffic goes to the Node API running on localhost:8080 (pm2).
+	reverse_proxy localhost:8080
+
+	# Let any browser origin call the API (the frontend is hosted on Firebase,
+	# a different domain). The Express app also sets permissive CORS, so this is
+	# belt-and-suspenders; tighten to your Firebase domain later if you want.
+	header {
+		Access-Control-Allow-Origin "*"
+		Access-Control-Allow-Methods "GET, OPTIONS"
+		Access-Control-Allow-Headers "*"
+	}
+
+	encode gzip
+	log {
+		output file /var/log/caddy/bloodfang.log
+	}
+}
