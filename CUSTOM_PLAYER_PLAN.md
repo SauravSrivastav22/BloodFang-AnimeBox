@@ -1,5 +1,39 @@
 # BloodFang — Custom Player: Step-by-Step Build Plan
 
+_Created: 2026-07-16 · Status: **SHELVED 2026-07-27** — M1 attempted, blocked (see below)_
+
+> ## ⏸️ SHELVED — why (2026-07-27)
+> We attempted M1 (the stream resolver) end-to-end and hit two independent walls:
+> 1. **Sources block scrapers.** Consumet's providers are fully rotted (every
+>    source times out). Swapped to the maintained `aniwatch` HiAnime scraper and
+>    deployed it to a free host (Render) so the datacenter IP could reach the
+>    source — but `search` returns **empty** (`"Title not found on source"`),
+>    the classic signature of Cloudflare bot-protection challenging the
+>    datacenter IP. Home ISP blocks the sources outright (`hianime.to` = HTTP 000).
+>    So: **home = ISP-blocked, free datacenter = Cloudflare-challenged.**
+> 2. **Free host deploy pipeline stalled.** Render deployed the first build
+>    (`01ef288`, aniwatch resolver live) but then **stopped deploying** newer
+>    commits (debug endpoints never went live) despite Auto-Deploy = "On Commit"
+>    and manual deploys — its GitHub sync appeared stuck on an old commit.
+>
+> **Decision (user): shelve the custom player.** The live app keeps working via
+> the embed players (Vidnest/VidLink). All groundwork stays in the repo.
+>
+> **What's kept & resumable:**
+> - `/api/stream` resolver in `server/index.js` (aniwatch primary, Consumet
+>   fallback) + `resolver:'aniwatch'` marker on `/api/health`.
+> - Deploy kits: `Dockerfile`, `render.yaml`, `deploy/DEPLOY_FREE.md`,
+>   `deploy/ORACLE_SETUP.md`, `deploy/setup.sh`.
+> - The live Render service `bloodfang-api` (free) can be **deleted/suspended**
+>   in the Render dashboard — nothing points to it.
+>
+> **To resume, the real problem to solve first is the Cloudflare block**, e.g.:
+> a Cloudflare-bypass layer (FlareSolverr) beside the resolver, a source/mirror
+> that isn't CF-protected, or a paid residential-proxy/VPS. Only after a resolver
+> reliably returns an `.m3u8` do M2 (proxy) and M3 (the hls.js player) make sense._
+
+---
+
 _Created: 2026-07-16 · Status: PLANNED (not started)_
 
 Our own video player so we can control the stream — the goal that started this:
