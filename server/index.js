@@ -497,29 +497,47 @@ async function resolveStream(opts) {
   }
 }
 
-// TEMP debug: inspect what aniwatch's HiAnime search actually returns from the
-// host (to diagnose empty results / Cloudflare challenges). Remove after M1.
+// TEMP debug: diagnose why aniwatch search comes back empty. Reports both the
+// scraper result AND a raw fetch of hianime.to so we can see if Cloudflare is
+// challenging Render's datacenter IP. Remove after M1.
 app.get(
   '/api/debug/search',
   route(async (req) => {
     const q = (req.query.q || 'one piece').toString()
+    const out = { q }
+    // 1) aniwatch scraper result
     try {
       const r = await withTimeout(hianime.search(q), 15000, 'search')
-      return {
-        q,
+      out.scraper = {
         keys: r ? Object.keys(r) : null,
         count: r?.animes?.length ?? 0,
-        animes: (r?.animes ?? []).slice(0, 5).map((a) => ({
-          id: a.id,
-          name: a.name,
-          jname: a.jname,
-          type: a.type,
-          episodes: a.episodes,
-        })),
+        animes: (r?.animes ?? []).slice(0, 5).map((a) => ({ id: a.id, name: a.name })),
       }
     } catch (e) {
-      return { q, error: e?.message || String(e) }
+      out.scraper = { error: e?.message || String(e) }
     }
+    // 2) raw reachability of the source from THIS host (Cloudflare check)
+    try {
+      const res = await withTimeout(
+        fetch(`https://hianime.to/search?keyword=${encodeURIComponent(q)}`, {
+          headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html' },
+        }),
+        12000,
+        'raw fetch',
+      )
+      const body = await res.text()
+      out.rawFetch = {
+        status: res.status,
+        server: res.headers.get('server'),
+        cfMitigated: res.headers.get('cf-mitigated'),
+        len: body.length,
+        looksLikeChallenge: /just a moment|cf-challenge|checking your browser|cf_chl/i.test(body),
+        snippet: body.slice(0, 160).replace(/\s+/g, ' '),
+      }
+    } catch (e) {
+      out.rawFetch = { error: e?.message || String(e) }
+    }
+    return out
   }),
 )
 
