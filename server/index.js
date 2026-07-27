@@ -9,6 +9,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { META, ANIME } from '@consumet/extensions'
+import { HiAnime } from 'aniwatch'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DIST_DIR = path.join(__dirname, '..', 'dist')
@@ -370,19 +371,100 @@ app.get(
 // NOT cached, so a retry can still succeed after a transient provider hiccup.
 const CACHE_STREAM = 5 * 60 * 1000
 
-async function resolveStream({ anilistId, episode, type }) {
+// Primary resolver: the maintained `aniwatch` HiAnime scraper. Consumet's own
+// providers are currently rotted (every source times out even from a datacenter
+// IP — confirmed on Render 2026-07-27), so aniwatch is tried first and Consumet
+// is only a last-ditch fallback below.
+const hianime = new HiAnime.Scraper()
+
+// Lightweight AniList title lookup (romaji + english) so we can search HiAnime,
+// which is title-based (no AniList-id mapping). Cached with the rest of the meta.
+function fetchTitles(id) {
+  return cached(`titles:${id}`, CACHE_META, async () => {
+    const query = `query($id:Int){Media(id:$id,type:ANIME){title{romaji english}format}}`
+    const res = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ query, variables: { id: Number(id) } }),
+    })
+    if (!res.ok) throw new Error(`AniList responded ${res.status}`)
+    return (await res.json())?.data?.Media ?? null
+  })
+}
+
+// Loose title key for matching AniList titles against HiAnime search results.
+const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+
+async function resolveViaAniwatch({ anilistId, episode, type }) {
+  const category = type === 'dub' ? 'dub' : 'sub'
+  const meta = await withTimeout(fetchTitles(anilistId), 8000, 'AniList title')
+  const titles = [meta?.title?.english, meta?.title?.romaji].filter(Boolean)
+  if (!titles.length) throw new Error('No title for that AniList id')
+
+  // 1) Find the matching anime on HiAnime by title.
+  let anime = null
+  for (const t of titles) {
+    const r = await withTimeout(hianime.search(t), 12000, 'search')
+    const list = r?.animes ?? []
+    if (!list.length) continue
+    anime =
+      list.find((a) => norm(a.name) === norm(t)) ||
+      list.find((a) => norm(a.jname) === norm(t)) ||
+      list[0]
+    if (anime) break
+  }
+  if (!anime?.id) throw new Error('Title not found on source')
+
+  // 2) Episode list → the requested number.
+  const eps = await withTimeout(hianime.getEpisodes(anime.id), 12000, 'episodes')
+  const ep = (eps?.episodes ?? []).find((e) => Number(e.number) === Number(episode))
+  if (!ep?.episodeId) throw new Error(`Episode ${episode} not found`)
+
+  // 3) Pick a sub/dub server, then resolve its sources (try each until one works).
+  const servers = await withTimeout(hianime.getEpisodeServers(ep.episodeId), 12000, 'servers')
+  const avail = servers?.[category] ?? []
+  if (!avail.length) throw new Error(`No ${category} stream for episode ${episode}`)
+  let data = null
+  let lastErr = null
+  for (const s of avail) {
+    try {
+      data = await withTimeout(
+        hianime.getEpisodeSources(ep.episodeId, s.serverName, category),
+        15000,
+        `sources (${s.serverName})`,
+      )
+      if (data?.sources?.length) break
+    } catch (e) {
+      lastErr = e
+    }
+  }
+  const m3u8 =
+    data?.sources?.find((s) => s.isM3U8)?.url || data?.sources?.[0]?.url
+  if (!m3u8) throw new Error(lastErr?.message || 'No playable stream found')
+  return {
+    ok: true,
+    m3u8,
+    // Subtitle tracks power the real language menu in our player (M3).
+    subtitles: (data?.subtitles ?? [])
+      .filter((s) => s?.url && (s.lang || '').toLowerCase() !== 'thumbnails')
+      .map((s) => ({ lang: s.lang, url: s.url })),
+    // The CDN often needs these (Referer/Origin) — the M2 proxy forwards them.
+    headers: data?.headers ?? {},
+    intro: data?.intro ?? null,
+    provider: 'hianime(aniwatch)',
+    type: category,
+  }
+}
+
+// Last-ditch fallback via Consumet's AniList→HiAnime mapper (kept in case
+// aniwatch breaks but Consumet's source is briefly alive).
+async function resolveViaConsumet({ anilistId, episode, type }) {
   const dub = type === 'dub'
-  // 1) Map the AniList id → provider episode list. Dub episodes have their own
-  //    ids on HiAnime, so we ask for the dub list when type=dub.
   const info = await withTimeout(anilist.fetchAnimeInfo(anilistId, dub), 15000, 'anime info')
-  const episodes = info?.episodes ?? []
-  const match = episodes.find((e) => Number(e.number) === Number(episode))
+  const match = (info?.episodes ?? []).find((e) => Number(e.number) === Number(episode))
   if (!match) throw new Error(`Episode ${episode} not found (${dub ? 'dub' : 'sub'})`)
-  // 2) Resolve the real stream sources for that episode.
   const data = await withTimeout(anilist.fetchEpisodeSources(match.id), 15000, 'episode sources')
   const sources = data?.sources ?? []
-  // Prefer the adaptive "auto" HLS playlist (lets hls.js pick quality), then any
-  // m3u8, then whatever the provider gave us.
   const m3u8 =
     sources.find((s) => s.quality === 'auto' && s.isM3U8)?.url ||
     sources.find((s) => s.isM3U8)?.url ||
@@ -391,14 +473,25 @@ async function resolveStream({ anilistId, episode, type }) {
   return {
     ok: true,
     m3u8,
-    // Subtitle tracks power the real language menu in our player (M3).
     subtitles: (data?.subtitles ?? [])
       .filter((s) => s?.url && (s.lang || '').toLowerCase() !== 'thumbnails')
       .map((s) => ({ lang: s.lang, url: s.url })),
-    // The CDN often needs these (Referer/Origin) — the M2 proxy will forward them.
     headers: data?.headers ?? {},
-    provider: 'hianime',
+    provider: 'hianime(consumet)',
     type: dub ? 'dub' : 'sub',
+  }
+}
+
+async function resolveStream(opts) {
+  try {
+    return await resolveViaAniwatch(opts)
+  } catch (err) {
+    // aniwatch failed — try Consumet before giving up.
+    try {
+      return await resolveViaConsumet(opts)
+    } catch {
+      throw err // surface the primary (aniwatch) error, it's the informative one
+    }
   }
 }
 
