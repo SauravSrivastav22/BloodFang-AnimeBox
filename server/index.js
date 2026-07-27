@@ -263,7 +263,9 @@ const withTimeout = (promise, ms, label = 'request') =>
     ),
   ])
 
-app.get('/api/health', (_req, res) => res.json({ ok: true }))
+// `resolver` lets us confirm which build is live: 'aniwatch' = the M1 fix is
+// deployed; absent = still the old Consumet-only build.
+app.get('/api/health', (_req, res) => res.json({ ok: true, resolver: 'aniwatch' }))
 
 // Home feed
 app.get('/api/trending', route((req) => anilist.fetchTrendingAnime(page(req), PER_PAGE)))
