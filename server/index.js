@@ -497,6 +497,32 @@ async function resolveStream(opts) {
   }
 }
 
+// TEMP debug: inspect what aniwatch's HiAnime search actually returns from the
+// host (to diagnose empty results / Cloudflare challenges). Remove after M1.
+app.get(
+  '/api/debug/search',
+  route(async (req) => {
+    const q = (req.query.q || 'one piece').toString()
+    try {
+      const r = await withTimeout(hianime.search(q), 15000, 'search')
+      return {
+        q,
+        keys: r ? Object.keys(r) : null,
+        count: r?.animes?.length ?? 0,
+        animes: (r?.animes ?? []).slice(0, 5).map((a) => ({
+          id: a.id,
+          name: a.name,
+          jname: a.jname,
+          type: a.type,
+          episodes: a.episodes,
+        })),
+      }
+    } catch (e) {
+      return { q, error: e?.message || String(e) }
+    }
+  }),
+)
+
 app.get(
   '/api/stream',
   route(async (req) => {
