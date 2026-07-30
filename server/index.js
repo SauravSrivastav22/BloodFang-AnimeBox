@@ -264,8 +264,60 @@ const withTimeout = (promise, ms, label = 'request') =>
   ])
 
 // `resolver` lets us confirm which build is live: 'aniwatch' = the M1 fix is
-// deployed; absent = still the old Consumet-only build.
-app.get('/api/health', (_req, res) => res.json({ ok: true, resolver: 'aniwatch' }))
+// deployed; absent = still the old Consumet-only build. `build` bumps whenever we
+// ship a change we need to confirm actually landed (Render's auto-deploy has been
+// flaky about picking up new commits).
+app.get('/api/health', (_req, res) => res.json({ ok: true, resolver: 'aniwatch', build: 'probe-1' }))
+
+// ─── Diagnostic · why is the source blocking us? ─────────────────────────────
+// One decisive test: from wherever this server runs (e.g. Render's datacenter IP),
+// hit the source directly with realistic browser headers and report the RAW HTTP
+// status + Cloudflare headers + a body snippet. This tells us which block we face:
+//   • 403 + "Just a moment" / cf challenge body  → JS challenge  (needs a browser)
+//   • 403/503 + cf-ray, no challenge to solve     → IP hard-block (browser won't help)
+//   • 200 but body is HTML, not our data          → endpoint moved / different cause
+//   • connection error / timeout                  → TLS fingerprint or network block
+// Purely diagnostic; safe to remove once we know the answer.
+app.get(
+  '/api/probe',
+  route(async () => {
+    const targets = [
+      'https://hianime.to/',
+      'https://hianime.to/ajax/search/suggest?keyword=frieren',
+    ]
+    const headers = {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+      Referer: 'https://hianime.to/',
+    }
+    const results = []
+    for (const url of targets) {
+      try {
+        const r = await withTimeout(fetch(url, { headers, redirect: 'manual' }), 12000, 'probe')
+        const body = await r.text().catch(() => '')
+        results.push({
+          url,
+          status: r.status,
+          server: r.headers.get('server'),
+          cfRay: r.headers.get('cf-ray'),
+          cfMitigated: r.headers.get('cf-mitigated'),
+          location: r.headers.get('location'),
+          contentType: r.headers.get('content-type'),
+          bodyLen: body.length,
+          isChallenge: /just a moment|checking your browser|cf-challenge|__cf_chl|turnstile|attention required/i.test(
+            body,
+          ),
+          bodySnippet: body.slice(0, 400),
+        })
+      } catch (err) {
+        results.push({ url, error: err?.message || String(err) })
+      }
+    }
+    return { ok: true, from: 'server-side fetch', results }
+  }),
+)
 
 // Home feed
 app.get('/api/trending', route((req) => anilist.fetchTrendingAnime(page(req), PER_PAGE)))
