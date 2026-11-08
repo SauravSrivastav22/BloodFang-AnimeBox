@@ -119,6 +119,14 @@ ACTION: none needed (monitor). RE-CHECKED 2026-07-15 (QA round 2): VidSrc now
      selectable episodes (was 69); finished shows still use thumbnail cards.
      (Remaining edge: a series on hiatus with episodes=null + no
      nextAiringEpisode still falls back to the rich count — rare.)
+     >>> EDGE FIXED 2026-11-08 <<< Not rare after all: long runners like
+     Chiikawa / Anpanman / Nintama Rantarou are RELEASING with no
+     nextAiringEpisode and no streamingEpisodes, so they showed 0 episodes.
+     Now we also fetch the airing schedule's LAST AIRED episode
+     (Page.airingSchedules sort:EPISODE_DESC) -> Chiikawa 382, Anpanman 1730,
+     Nintama 2242. Titles with no schedule at all get a "Play episode #" box.
+     Also fixed: the → key stopped at the rich count (One Piece ep 69); it now
+     uses the same count as the list (shared episodeTotal()).
 --------------------------------------------------------
 WHAT (original): Episodes came from AniList `streamingEpisodes` only. For One
       Piece that list has 69 entries (and `episodes` is null), so the UI showed

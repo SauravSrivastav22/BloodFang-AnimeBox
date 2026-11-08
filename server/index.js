@@ -118,14 +118,17 @@ async function _fetchAniListMeta(id) {
     characters(sort:ROLE,perPage:12){ edges{ role node{ name{ full } image{ large } } } }
     relations{ edges{ relationType node{ id type ${MEDIA_CARD_FIELDS} } } }
     recommendations(sort:RATING_DESC,perPage:12){ nodes{ mediaRecommendation{ id type ${MEDIA_CARD_FIELDS} } } }
-  }}`
+  }
+  lastAired: Page(perPage:1){ airingSchedules(mediaId:$id,notYetAired:false,sort:EPISODE_DESC){ episode } }
+  }`
   const res = await fetch('https://graphql.anilist.co', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ query, variables: { id: Number(id) } }),
   })
   if (!res.ok) throw new Error(`AniList responded ${res.status}`)
-  const m = res && (await res.json())?.data?.Media
+  const data = (await res.json())?.data
+  const m = data?.Media
   if (!m) throw new Error('Title not found on AniList')
   // Related titles (sequels/prequels/etc.) — anime only, tagged with the relation.
   const related = (m.relations?.edges ?? [])
@@ -153,6 +156,9 @@ async function _fetchAniListMeta(id) {
     // For airing shows, the next episode number → (n-1) is the latest aired,
     // used to list ALL episodes when `episodes` is null (e.g. One Piece).
     nextAiringEpisode: m.nextAiringEpisode?.episode ?? null,
+    // Latest aired episode from the schedule — covers long runners/hiatus shows
+    // that have no `episodes` total AND no nextAiringEpisode (e.g. Chiikawa).
+    lastAiredEpisode: data?.lastAired?.airingSchedules?.[0]?.episode ?? null,
     // Only YouTube trailers can be embedded; ignore other hosts.
     trailer: m.trailer?.site === 'youtube' ? { id: m.trailer.id, thumbnail: m.trailer.thumbnail } : null,
     characters: (m.characters?.edges ?? []).map((e) => ({

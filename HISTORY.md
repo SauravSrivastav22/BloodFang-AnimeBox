@@ -537,6 +537,15 @@ Post-roadmap enhancement pass — **15 features (A–O)**, all lint-clean + buil
   "Couldn't load this row. ↻ Retry" instead of disappearing.
 - 🧹 Docs cleanup: `TODO.txt` cloud-sync status corrected, player status +
   Render housekeeping added; this history brought up to date.
+- 🔢 **Episode count for shows on a break** (issue #6 edge) — long runners with
+  no total and no next-airing date (Chiikawa, Anpanman, Nintama Rantarou)
+  showed **0 episodes**. Metadata now also fetches the last aired episode from
+  AniList's airing schedule (server + static build) → 382 / 1730 / 2242.
+  Titles with no data at all get a **"▶ Play episode #"** box instead of a dead
+  end, and Next keeps working when the total is unknown.
+- ⌨️ **→ key fix** — it stopped at the thumbnail-list length (One Piece ep 69).
+  List, Prev/Next and ←/→ now share one `episodeTotal()` in `DetailPage.jsx`.
+- 🛠️ This PC set up: Node.js 26 LTS, GitHub CLI, Firebase CLI.
 
 ---
 

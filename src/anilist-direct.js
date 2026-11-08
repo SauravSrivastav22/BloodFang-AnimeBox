@@ -221,8 +221,11 @@ async function fetchMeta(id) {
     characters(sort:ROLE,perPage:12){ edges{ role node{ name{ full } image{ large } } } }
     relations{ edges{ relationType node{ id type ${CARD_FIELDS} } } }
     recommendations(sort:RATING_DESC,perPage:12){ nodes{ mediaRecommendation{ id type ${CARD_FIELDS} } } }
-  }}`
-  const m = (await gql(query, { id: Number(id) }, TTL_INFO))?.Media
+  }
+  lastAired: Page(perPage:1){ airingSchedules(mediaId:$id,notYetAired:false,sort:EPISODE_DESC){ episode } }
+  }`
+  const data = await gql(query, { id: Number(id) }, TTL_INFO)
+  const m = data?.Media
   if (!m) throw new Error('Title not found on AniList')
   const related = (m.relations?.edges ?? [])
     .filter((e) => e.node?.type === 'ANIME')
@@ -246,6 +249,7 @@ async function fetchMeta(id) {
     type: m.format,
     releaseDate: m.startDate?.year,
     nextAiringEpisode: m.nextAiringEpisode?.episode ?? null,
+    lastAiredEpisode: data?.lastAired?.airingSchedules?.[0]?.episode ?? null,
     trailer: m.trailer?.site === 'youtube' ? { id: m.trailer.id, thumbnail: m.trailer.thumbnail } : null,
     characters: (m.characters?.edges ?? []).map((e) => ({
       name: e.node?.name?.full,

@@ -293,6 +293,13 @@ LOW VALUE (nice-to-have)
       Render stopped auto-deploying. Next: get the probe live, read it.
 
 --------------------------------------------------------
+ FIXED 2026-11-08
+--------------------------------------------------------
+  [x] Home rows show "Couldn't load — Retry" instead of vanishing (issue #2)
+  [x] Episode count for long runners / hiatus shows via airing schedule;
+      "Play episode #" fallback; → key no longer stops at ep 69 (issue #6)
+
+--------------------------------------------------------
  HOUSEKEEPING (user action)
 --------------------------------------------------------
   [ ] Delete/suspend the free Render service `bloodfang-api` in the

@@ -8,6 +8,23 @@ import EmbedPlayer from './EmbedPlayer'
 // Episodes per range chunk, so a 1000+ episode title doesn't render every button.
 const EP_PAGE = 100
 
+// Best-known episode count, shared by the episode list, Prev/Next and the ←/→
+// keys. Explicit total, else the latest aired episode (nextAiringEpisode - 1,
+// or the airing schedule's last aired episode for shows on a break), else
+// however many rich episodes we have.
+function episodeTotal(info) {
+  const rich = info?.streamingEpisodes?.length ?? 0
+  const airedCount = info?.nextAiringEpisode
+    ? info.nextAiringEpisode - 1
+    : info?.lastAiredEpisode || 0
+  const knownCount = info?.totalEpisodes || info?.currentEpisode || airedCount || 0
+  // Single-unit formats (movie/music/special) with a known count: trust it —
+  // AniList sometimes pads streamingEpisodes with a PV, which would otherwise add
+  // a bogus extra episode. Everything else takes max() so long TV shows all eps.
+  const singleUnit = ['MOVIE', 'MUSIC', 'SPECIAL'].includes(info?.type)
+  return singleUnit && knownCount ? knownCount : Math.max(knownCount, rich)
+}
+
 function stripHtml(html = '') {
   return html.replace(/<[^>]*>/g, '')
 }
@@ -60,6 +77,8 @@ export default function DetailPage({ id, onBack, onOpen, startEpisode = null, on
   const [rangeStart, setRangeStart] = useState(0)
   // Brief "Copied!" state for the share button.
   const [copied, setCopied] = useState(false)
+  // "Play episode #" box, shown when AniList knows no episode count at all.
+  const [jumpEp, setJumpEp] = useState('1')
   // Refs for the 3D entrance.
   const heroRef = useRef(null)
   const episodesRef = useRef(null)
@@ -134,7 +153,7 @@ export default function DetailPage({ id, onBack, onOpen, startEpisode = null, on
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
       if (e.key === 'Escape') return onBack?.()
       if (!activeEp) return
-      const total = info?.streamingEpisodes?.length || info?.totalEpisodes || 0
+      const total = episodeTotal(info)
       if (e.key === 'ArrowLeft' && activeEp > 1) play(activeEp - 1)
       else if (e.key === 'ArrowRight' && (!total || activeEp < total)) play(activeEp + 1)
     }
@@ -217,23 +236,15 @@ export default function DetailPage({ id, onBack, onOpen, startEpisode = null, on
   const anilistId = info.id || id
   // AniList's rich episode list (thumbnails + titles) if available.
   const richEpisodes = info.streamingEpisodes ?? []
-  // Best-known episode count: explicit total, else (for airing shows) the latest
-  // aired episode via nextAiringEpisode, else however many rich episodes we have.
-  const airedCount = info.nextAiringEpisode ? info.nextAiringEpisode - 1 : 0
-  const knownCount = info.totalEpisodes || info.currentEpisode || airedCount || 0
-  // Single-unit formats (movie/music/special) with a known count: trust it —
-  // AniList sometimes pads streamingEpisodes with a PV, which would otherwise add
-  // a bogus extra episode. Everything else takes max() so long TV shows all eps.
-  const singleUnit = ['MOVIE', 'MUSIC', 'SPECIAL'].includes(info.type)
-  const totalEps =
-    singleUnit && knownCount ? knownCount : Math.max(knownCount, richEpisodes.length)
+  const totalEps = episodeTotal(info)
   // Use rich cards (thumbnails) only when they cover EVERY episode; otherwise a
   // numbered list so all episodes stay selectable (e.g. One Piece: 69 → 1169).
   const useRich = richEpisodes.length > 0 && richEpisodes.length >= totalEps
   const rangeCount = Math.ceil(totalEps / EP_PAGE)
   // Prev / Next targets for the in-player episode nav (clamped to range).
   const prevEp = activeEp && activeEp > 1 ? activeEp - 1 : null
-  const nextEp = activeEp && totalEps && activeEp < totalEps ? activeEp + 1 : null
+  // Unknown total (0) → let Next keep going rather than dead-ending.
+  const nextEp = activeEp && (!totalEps || activeEp < totalEps) ? activeEp + 1 : null
 
   // Copy the current deep link (title + ?ep) to the clipboard.
   const onShare = async () => {
@@ -416,14 +427,33 @@ export default function DetailPage({ id, onBack, onOpen, startEpisode = null, on
             <div className="state-icon">📺</div>
             <p className="state-title">No episodes listed yet</p>
             <p className="state-msg">
-              The streaming source is down or hasn’t indexed this title. You can
-              still try the player below, or check back later.
+              AniList doesn’t list an episode count for this title. You can still
+              try playing an episode by number, or check back later.
             </p>
-            <div className="state-actions">
-              <button className="btn btn-primary" onClick={() => setReloadKey((k) => k + 1)}>
+            <form
+              className="state-actions"
+              data-no-loader
+              onSubmit={(e) => {
+                e.preventDefault()
+                const n = parseInt(jumpEp, 10)
+                if (n >= 1) play(n)
+              }}
+            >
+              <input
+                className="ep-jump"
+                type="number"
+                min="1"
+                value={jumpEp}
+                onChange={(e) => setJumpEp(e.target.value)}
+                aria-label="Episode number"
+              />
+              <button type="submit" className="btn btn-primary" data-no-loader>
+                ▶ Play episode
+              </button>
+              <button type="button" className="btn" onClick={() => setReloadKey((k) => k + 1)}>
                 ↻ Try again
               </button>
-            </div>
+            </form>
           </div>
         )}
       </section>

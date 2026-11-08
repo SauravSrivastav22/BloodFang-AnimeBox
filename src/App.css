@@ -1044,6 +1044,15 @@ body {
 .genre-row-head .section-title {
   margin: 0.5rem 0 0.7rem;
 }
+.ep-jump {
+  width: 5.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 0.85rem;
+}
 .row-failed {
   display: flex;
   align-items: center;
