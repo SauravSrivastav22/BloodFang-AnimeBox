@@ -18,17 +18,18 @@ const SERVERS = [
     label: 'Vidnest',
     url: ({ anilist, ep, type }) => `https://vidnest.fun/anime/${anilist}/${ep}/${type}`,
   },
-  {
-    key: 'vidlink',
-    label: 'VidLink',
-    url: ({ anilist, ep, type }) => `https://vidlink.pro/anime/${anilist}/${ep}/${type}`,
-  },
-  // NOTE: VidSrc (vidsrc.cc) was removed — it was consistently down (522/timeout).
-  // Add a replacement here if a reliable AniList-id embed provider is found.
+  // NOTE: VidLink removed 2026-11-08 — its live anime player fetches episodes
+  // from `http://localhost:8080/api/anime/...` (a broken deploy on their side),
+  // so EVERY title showed "We couldn't find this episode". Re-add when fixed:
+  //   { key: 'vidlink', label: 'VidLink',
+  //     url: ({ anilist, ep, type }) => `https://vidlink.pro/anime/${anilist}/${ep}/${type}` },
+  // Also dead (checked 2026-11-08): vidsrc.cc (522), megaplay.buzz (410 on every
+  // title). Add a replacement here if a reliable AniList-id provider is found.
 ]
 
-// Remember the server that last played so it's the default next time.
-const LS_SERVER = 'devilapp:server'
+// Remember the server the user last PICKED so it's the default next time.
+// (v2 key: drops old saved prefs that pinned people to the broken VidLink.)
+const LS_SERVER = 'bloodfang:server:v2'
 // If the iframe hasn't fired `load` within this window the server is probably
 // dead/blocked (cross-origin: `load` fires even for the source's own error page,
 // so this only catches truly unreachable servers — good enough to auto-skip).
@@ -101,7 +102,9 @@ export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = 
     clearTimeout(timerRef.current)
     setStatus('loaded')
     setNotice('')
-    saveServerPref(server.key) // remember the one that actually loaded
+    // Don't save the server here: cross-origin `load` also fires for the
+    // provider's own "couldn't find this episode" page, so saving on load
+    // pinned people to a broken server. Only a manual pick is remembered.
   }
 
   // Manual server pick resets the auto-advance chain (user is in control now).
@@ -109,6 +112,7 @@ export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = 
     attempted.current = new Set()
     setNotice('')
     setServerIdx(i)
+    saveServerPref(SERVERS[i].key)
   }
 
   // "Not playing? Try next server" — cycle to the next one.
@@ -152,9 +156,10 @@ export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = 
         ▶ Playing “{server.label}”. Use <strong>Sub/Dub</strong> above for audio. For
         the <strong>subtitle language</strong> (if the title has more than one), open
         the player’s own <strong>CC / ⚙ menu</strong> at the bottom-right of the video.
-        If the player is blank or says “couldn’t find this episode”, click{' '}
-        <strong>Not playing? Try next server</strong> or pick another Server. These free
-        sources are volatile and may show ads.
+        If the player is blank or says “couldn’t find this episode”, switch{' '}
+        <strong>Audio to Sub</strong> (dubs are often missing)
+        {SERVERS.length > 1 ? ' or pick another Server' : ''}. These free sources
+        don’t carry every title, are volatile and may show ads.
       </p>
       <p className="embed-tip" data-no-loader>
         💡 These free servers open pop-up/new-tab ads on click — that’s the provider,
@@ -191,11 +196,13 @@ export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = 
         )}
       </div>
 
-      <div className="embed-actions" data-no-loader>
-        <button className="btn" onClick={tryNext}>
-          ▶ Not playing? Try next server
-        </button>
-      </div>
+      {SERVERS.length > 1 && (
+        <div className="embed-actions" data-no-loader>
+          <button className="btn" onClick={tryNext}>
+            ▶ Not playing? Try next server
+          </button>
+        </div>
+      )}
     </div>
   )
 }
