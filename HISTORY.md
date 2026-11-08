@@ -507,6 +507,37 @@ Post-roadmap enhancement pass — **15 features (A–O)**, all lint-clean + buil
   `bloodfang-fca0a` + `bloodfang-animebox` projects were deleted via the Cloud
   Resource Manager API (firebase CLI has no project-delete).
 
+### 2026-07-16
+- ☁️ **Cloud sync live** — Firebase project set up; Google sign-in + per-user
+  Firestore rules deployed; profile stamped on each user doc. Account button
+  pinned top-right in both headers (issue #12). Default audio = Dub.
+- 🚫 **Pop-up ads investigation** — tried an iframe `sandbox` to block new-tab
+  ads; providers refused to play, so it was reverted. Added an in-player
+  uBlock Origin tip instead (issue #11).
+- 📝 **Custom player plan** written (`CUSTOM_PLAYER_PLAN.md` + plain-English
+  `Creating new player with steps.txt`): own hls.js player with a ~2 min buffer,
+  milestones M1–M6.
+
+### 2026-07-24 – 2026-07-30 — Custom player attempt (shelved)
+- 🛠️ **M1** — `/api/stream` resolver in `server/index.js` (first on Consumet,
+  then swapped to the maintained `aniwatch` HiAnime scraper when Consumet's
+  providers turned out to be dead). Short-TTL cache + `{ok:false}` fallback.
+- 🚀 **M4** — deploy kits: Oracle (`deploy/`, `ORACLE_SETUP.md`) and no-card
+  Koyeb/Render (`Dockerfile`, `render.yaml`, `DEPLOY_FREE.md`). Deployed to
+  Render (Oracle didn't accept the user's RuPay card).
+- ⛔ **Blocked** — the home ISP blocks `hianime.to`; from Render the search
+  comes back empty (looks like a Cloudflare bot challenge). Render then stopped
+  deploying newer commits. **Shelved 2026-07-27**; the embed players stay as the
+  live path.
+- 🔬 **2026-07-30** — added `/api/probe` (status + Cloudflare headers) to
+  classify the block. Result not yet read.
+
+### 2026-11-08
+- 🔁 **Home rows no longer vanish on error** (issue #2) — a failed row shows
+  "Couldn't load this row. ↻ Retry" instead of disappearing.
+- 🧹 Docs cleanup: `TODO.txt` cloud-sync status corrected, player status +
+  Render housekeeping added; this history brought up to date.
+
 ---
 
 ## Task Log / TODO
@@ -523,7 +554,7 @@ Post-roadmap enhancement pass — **15 features (A–O)**, all lint-clean + buil
 - [x] Continue Watching history + browser Back/Forward navigation
 - [x] In-app video playback (embed player, dub-first)
 - [x] Production build (local) — single-port `npm run prod`
-- [ ] URL-based routing (react-router) so detail pages are shareable/bookmarkable
+- [x] URL-based routing (react-router) so detail pages are shareable/bookmarkable
 
 ---
 

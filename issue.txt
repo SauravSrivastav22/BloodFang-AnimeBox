@@ -48,8 +48,10 @@ SUGGESTED FIX:
 
 --------------------------------------------------------
  #2  [OURS] MED — Genre/season rows vanish silently on any fetch error
-     >>> LARGELY MITIGATED by #1's 429 retry (rows no longer drop on rate
-         limits). Still worth a retry/placeholder for genuine failures. <<<
+     >>> STATUS: FIXED 2026-11-08 <<<
+     A failed row now stays visible with "Couldn't load this row. ↻ Retry"
+     (App.jsx Row, .row-failed). Retry refetches just that row and skips
+     the blood loader. Rows with genuinely 0 results still hide.
 --------------------------------------------------------
 WHAT: In App.jsx `Row`, any fetch failure (incl. a 429 from #1) sets
       `failed=true` and the component returns null — the whole row just

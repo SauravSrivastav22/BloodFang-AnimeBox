@@ -200,12 +200,18 @@ const FEATURED_GENRES = [
 const rowCache = new Map()
 
 // One horizontally-scrolling home row. `criteria` is any searchAnime() filter
-// (a genre, or a season+year). Fetches once, caches, and hides itself if the
-// row has no results or the request fails.
+// (a genre, or a season+year). Fetches once and caches. Hides itself if the row
+// has no results; on a failed request it shows a small retry placeholder.
 function Row({ title, cacheKey, criteria, onOpen, favIds, onToggleFav, resumeMap, onResume, onSeeAll }) {
   const [items, setItems] = useState(() => rowCache.get(cacheKey) ?? null)
   const [failed, setFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   const rowRef = useRef(null)
+
+  const retry = () => {
+    setFailed(false)
+    setAttempt((n) => n + 1)
+  }
 
   // 3D reveal the row's cards once they're in the DOM.
   useLayoutEffect(() => {
@@ -228,11 +234,28 @@ function Row({ title, cacheKey, criteria, onOpen, favIds, onToggleFav, resumeMap
     return () => {
       cancelled = true
     }
-    // criteria is rebuilt each render; cacheKey identifies it. Fetch once per key.
+    // criteria is rebuilt each render; cacheKey identifies it. Fetch once per key
+    // (plus once per manual retry).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cacheKey])
+  }, [cacheKey, attempt])
 
-  if (failed || (items && items.length === 0)) return null
+  if (items && items.length === 0) return null
+
+  if (failed) {
+    return (
+      <section className="genre-row">
+        <div className="genre-row-head">
+          <h2 className="section-title">{title}</h2>
+        </div>
+        <div className="row-failed">
+          <span>Couldn't load this row.</span>
+          <button className="btn" data-no-loader onClick={retry}>
+            ↻ Retry
+          </button>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className="genre-row">

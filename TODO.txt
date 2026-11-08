@@ -1,6 +1,6 @@
 ========================================================
  BloodFang (was DevilApp) — Pending Work & Forward Roadmap
- Last updated: 2026-07-14
+ Last updated: 2026-11-08
  STATUS: Roadmap COMPLETE. #1-#8 done; #9 (deploy) intentionally
          skipped — app is LOCAL-ONLY by design (npm run prod).
 ========================================================
@@ -237,7 +237,7 @@ LOW VALUE (nice-to-have)
          page + random pick). (App.jsx onSurprise)
 
 --------------------------------------------------------
- CLOUD SYNC — Google sign-in (BUILT; awaiting user setup)
+ CLOUD SYNC — Google sign-in (DONE & LIVE 2026-07-16)
 --------------------------------------------------------
  Goal: sign in with Google (Gmail) so data (My List, Continue
  Watching, watched episodes, settings) saves to the cloud and
@@ -254,7 +254,9 @@ LOW VALUE (nice-to-have)
         configured, so app stays local-only meanwhile.
         Lint + build green (firebase = separate lazy chunk).
 
-  [ ] TODO (user, ~5 min, one time) — see FIREBASE_SETUP.md
+  [x] Firebase project setup  -- DONE 2026-07-16 (verified in issue.txt
+        QA round 3: sign-in live, per-user Firestore rules deployed).
+        Steps kept below for reference — see FIREBASE_SETUP.md
         1. Create a free Firebase project (console.firebase.google.com)
         2. Register a Web app; paste the 6 config values into
            src/firebase-config.js (apiKey, authDomain, projectId,
@@ -284,6 +286,18 @@ LOW VALUE (nice-to-have)
       >>> FULL PLAN: see CUSTOM_PLAYER_PLAN.md <<<
       DECISION 2026-07-16: user chose option (b) — write the plan;
       build deferred until we're ready for a paid backend.
+      UPDATE 2026-07-27: M1 attempted, SHELVED — sources block the
+      scraper (home ISP blocks hianime.to; free datacenter IP gets
+      Cloudflare-challenged). 2026-07-30: added /api/probe to classify
+      the block (JS challenge vs IP block) — not yet read, because
+      Render stopped auto-deploying. Next: get the probe live, read it.
+
+--------------------------------------------------------
+ HOUSEKEEPING (user action)
+--------------------------------------------------------
+  [ ] Delete/suspend the free Render service `bloodfang-api` in the
+      Render dashboard if the custom player stays shelved (nothing in
+      the live app points to it).
 
 --------------------------------------------------------
  STATUS
@@ -291,8 +305,8 @@ LOW VALUE (nice-to-have)
   Roadmap complete (#1-#8 + blood loader), #9 deploy skipped
   (local-only by design). App runs via `npm run prod` on :3001.
   ALL enhancements A-O DONE (2026-07-15).
-  Cloud sync (Google login) CODE DONE — awaiting user's Firebase
-  project setup (FIREBASE_SETUP.md) to activate.
+  Cloud sync (Google login) DONE & LIVE (2026-07-16).
+  Custom player SHELVED at M1 (see CUSTOM_PLAYER_PLAN.md).
   DEPLOYED (2026-07-15): live on Firebase Hosting (free) at
   https://bloodfang-anime.web.app via the static/direct-AniList
   build (npm run build:static; firebase deploy --only hosting).
