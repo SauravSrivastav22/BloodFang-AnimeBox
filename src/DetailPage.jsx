@@ -25,6 +25,13 @@ function episodeTotal(info) {
   return singleUnit && knownCount ? knownCount : Math.max(knownCount, rich)
 }
 
+// Highest episode that has actually aired. A currently-airing show lists its
+// full planned count (e.g. 13) but only eps < nextAiringEpisode exist yet —
+// the embed players show "couldn't find this episode" for the rest.
+function airedLimit(info) {
+  return info?.nextAiringEpisode ? info.nextAiringEpisode - 1 : Infinity
+}
+
 function stripHtml(html = '') {
   return html.replace(/<[^>]*>/g, '')
 }
@@ -154,8 +161,9 @@ export default function DetailPage({ id, onBack, onOpen, startEpisode = null, on
       if (e.key === 'Escape') return onBack?.()
       if (!activeEp) return
       const total = episodeTotal(info)
+      const canNext = (!total || activeEp < total) && activeEp < airedLimit(info)
       if (e.key === 'ArrowLeft' && activeEp > 1) play(activeEp - 1)
-      else if (e.key === 'ArrowRight' && (!total || activeEp < total)) play(activeEp + 1)
+      else if (e.key === 'ArrowRight' && canNext) play(activeEp + 1)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -244,7 +252,9 @@ export default function DetailPage({ id, onBack, onOpen, startEpisode = null, on
   // Prev / Next targets for the in-player episode nav (clamped to range).
   const prevEp = activeEp && activeEp > 1 ? activeEp - 1 : null
   // Unknown total (0) → let Next keep going rather than dead-ending.
-  const nextEp = activeEp && (!totalEps || activeEp < totalEps) ? activeEp + 1 : null
+  const aired = airedLimit(info)
+  const nextEp =
+    activeEp && (!totalEps || activeEp < totalEps) && activeEp < aired ? activeEp + 1 : null
 
   // Copy the current deep link (title + ?ep) to the clipboard.
   const onShare = async () => {
@@ -376,13 +386,15 @@ export default function DetailPage({ id, onBack, onOpen, startEpisode = null, on
             {richEpisodes.slice(rangeStart, Math.min(rangeStart + EP_PAGE, totalEps)).map((ep, i) => {
               const n = rangeStart + i + 1
               const seen = watched.has(n)
+              const upcoming = n > aired
               return (
                 <button
                   key={ep.id || n}
                   className={`stream-card ${activeEp === n ? 'stream-card-on' : ''} ${
                     seen ? 'ep-watched' : ''
-                  }`}
+                  } ${upcoming ? 'ep-upcoming' : ''}`}
                   onClick={() => play(n)}
+                  disabled={upcoming}
                 >
                   <div className="stream-thumb">
                     {ep.image ? <img src={ep.image} alt={ep.title} loading="lazy" /> : null}
@@ -405,17 +417,19 @@ export default function DetailPage({ id, onBack, onOpen, startEpisode = null, on
               (_, i) => rangeStart + i + 1,
             ).map((n) => {
               const seen = watched.has(n)
+              const upcoming = n > aired
               return (
                 <button
                   key={n}
                   className={`episode ${activeEp === n ? 'episode-on' : ''} ${
                     seen ? 'ep-watched' : ''
-                  }`}
+                  } ${upcoming ? 'ep-upcoming' : ''}`}
                   onClick={() => play(n)}
-                  title={`Play episode ${n}`}
+                  disabled={upcoming}
+                  title={upcoming ? `Episode ${n} hasn't aired yet` : `Play episode ${n}`}
                 >
                   <span className="episode-num">{seen ? '✓' : n}</span>
-                  <span className="episode-title">Episode {n}</span>
+                  <span className="episode-title">{upcoming ? 'Not aired yet' : `Episode ${n}`}</span>
                 </button>
               )
             })}

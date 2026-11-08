@@ -1044,6 +1044,14 @@ body {
 .genre-row-head .section-title {
   margin: 0.5rem 0 0.7rem;
 }
+.ep-upcoming,
+.ep-upcoming:hover {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-style: dashed;
+  box-shadow: none;
+  transform: none;
+}
 .ep-jump {
   width: 5.5rem;
   padding: 0.5rem 0.6rem;
