@@ -546,6 +546,33 @@ Post-roadmap enhancement pass — **15 features (A–O)**, all lint-clean + buil
 - ⌨️ **→ key fix** — it stopped at the thumbnail-list length (One Piece ep 69).
   List, Prev/Next and ←/→ now share one `episodeTotal()` in `DetailPage.jsx`.
 - 🛠️ This PC set up: Node.js 26 LTS, GitHub CLI, Firebase CLI.
+- ⏳ **Unaired episodes blocked** — airing shows list their full planned count
+  (Magical Explorer: 13) but only eps < `nextAiringEpisode` exist; those now
+  show greyed "Not aired yet", and Next / → stop at the latest aired episode.
+- 🎬 **"We couldn't find this episode" on every title — root cause + fix.**
+  Not caused by today's changes (`EmbedPlayer.jsx` was untouched; proven by
+  running the pre-change build side by side). Two causes: (1) **VidLink broke
+  on their side** — its live anime player fetches from `http://localhost:8080`
+  (headless Chrome: connection refused), so it fails for every title, every
+  site; (2) our player **saved the server on iframe `load`**, which also fires
+  for the provider's error page, pinning users to VidLink. Fix: VidLink removed
+  (re-add line kept as a comment), new pref key `bloodfang:server:v2`, only a
+  manual pick is remembered, help text points to Sub when a dub is missing.
+  Vidnest verified streaming (Death Note ep 1). Also dead: Megaplay (410),
+  vidsrc.cc (522). Vidnest coverage is patchy (One Piece, Captain Tylor OVA:
+  no stream).
+- 🔗 **Deep links lost `?ep` on a fresh load** — App's URL sync ran on every
+  route; now only on `/`. Shared/bookmarked episode links play the episode.
+- ▶️ **BloodFang's own player built (custom-player M2 + M3)** — `/api/proxy`
+  HLS relay + `src/NativePlayer.jsx` (hls.js, 2-min buffer, Quality +
+  Subtitles menus, buffered-ahead readout, resume, auto-fallback to Vidnest),
+  shown as **"BloodFang (beta)"** in the local build. `STREAM_DEMO=1` serves a
+  public test stream; verified 1080p, buffer 15→59 s in 22 s, subtitles on.
+  **Real anime not playing yet** — the episode source is blocked (see
+  `CUSTOM_PLAYER_PLAN.md` → "Source investigation 2026-11-08").
+- 🚀 Live site deployed with everything above except the beta player (it stays
+  hidden on the hosted build until a stream backend is online). The `?ep` fix
+  is committed but not yet deployed.
 
 ---
 

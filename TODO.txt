@@ -299,6 +299,14 @@ LOW VALUE (nice-to-have)
   [x] Episode count for long runners / hiatus shows via airing schedule;
       "Play episode #" fallback; → key no longer stops at ep 69 (issue #6)
 
+  [x] Unaired episodes greyed out ("Not aired yet"); Next/→ stop there
+  [x] VidLink removed (broken on their side); player no longer pins a server
+  [x] Deep links keep ?ep on a fresh load  (committed, NOT yet deployed)
+  [~] OWN PLAYER "BloodFang (beta)" built + demo-verified (local build only).
+      Real anime blocked on the source -> see CUSTOM_PLAYER_PLAN.md
+      "Source investigation 2026-11-08" + "Next steps".
+      NEXT: user gets Cloudflare WARP Connected (WARP mode), then re-test.
+
 --------------------------------------------------------
  HOUSEKEEPING (user action)
 --------------------------------------------------------

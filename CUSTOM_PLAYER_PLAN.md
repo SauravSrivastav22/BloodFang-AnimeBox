@@ -22,6 +22,52 @@
 > - Also fixed on the way: VidLink removed (its player calls `localhost:8080`),
 >   server pref no longer pinned on iframe load, and deep links lost `?ep` on a
 >   fresh load (App's URL sync ran on every route).
+>
+> ### Source investigation 2026-11-08 (why real anime doesn't play yet)
+> Our player + relay work (demo verified). What's missing is a **video source
+> reachable from where the backend runs**. Tested from the dev PC (India ISP):
+>
+> | Source | Result from this PC |
+> |---|---|
+> | HiAnime `hianime.to` (what `aniwatch` + Vidnest use) | ISP-blocked (timeout) |
+> | HiAnime mirrors (aniwatch.to, hianimez.to, hianime.cx/.do/.nz…) | blocked, parked, or redirect back to hianime.to |
+> | Megacloud (HiAnime's player) | `megacloud.blog` blocked |
+> | AllAnime API (what ani-cli uses) | Cloudflare "Just a moment…" challenge |
+> | AnimePahe | site loads, but its `kwik` video CDN is blocked |
+> | Free cloud host (Render, July) | HiAnime search empty — Cloudflare-challenged |
+>
+> **How Vidnest works:** it resolves episodes on *its own servers abroad* (where
+> HiAnime isn't blocked), then streams from CDNs (`megap.shiora.top` via a proxy)
+> that ARE reachable from this PC. Our `/api/stream` (aniwatch) does the same
+> lookup — it just needs to run somewhere HiAnime isn't blocked.
+>
+> **Decision:** no Cloudflare-challenge bypass (that's defeating a site's access
+> protection). Two clean options:
+> 1. **Cloudflare WARP on the PC (free) — try first.** Windows app from
+>    https://one.one.one.one, mode **WARP** (not "1.1.1.1"), switch **Connected**.
+>    First attempt failed only because WARP wasn't actually running (no process,
+>    `warp=off` in `https://www.cloudflare.com/cdn-cgi/trace`). Works only while
+>    the PC runs the backend.
+> 2. **Small paid VPS abroad (~$4–6/mo: Hetzner / DigitalOcean / Vultr)** — what
+>    Vidnest effectively has; would put our player on the public site. Test the
+>    resolver there before committing.
+>
+> ### Next steps (in order)
+> 1. User: get WARP to **Connected** (WARP mode).
+> 2. Check `warp=on` via the cdn-cgi trace, then hit `/api/probe`.
+> 3. Restart the backend **without** `STREAM_DEMO`, test `/api/stream` on Death
+>    Note ep 1 (sub + dub), One Piece, a movie → then play in "BloodFang (beta)".
+> 4. If it works: promote "BloodFang (beta)" to the default server locally; then
+>    plan the public-site backend (VPS + `VITE_STREAM_API`).
+> 5. Deploy the pending `?ep` deep-link fix to the live site.
+>
+> ### How to run / test locally
+> - Normal: `npm run prod` → http://localhost:3001
+> - Demo player: `npm run build` then `STREAM_DEMO=1 node server/index.js`
+>   (PowerShell: `$env:STREAM_DEMO="1"; node server/index.js`), open
+>   `/anime/1535?ep=1`, pick **Server: BloodFang (beta)**.
+> - Relay check: `/api/proxy?url=<encoded m3u8>` must return `#EXTM3U` with every
+>   URI rewritten to `/api/proxy?...`.
 
 _Created: 2026-07-16 · Status: **SHELVED 2026-07-27** — M1 attempted, blocked (see below)_
 
