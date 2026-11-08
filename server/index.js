@@ -431,6 +431,18 @@ app.get(
 // NOT cached, so a retry can still succeed after a transient provider hiccup.
 const CACHE_STREAM = 5 * 60 * 1000
 
+// Demo stream for building/testing our player while the real source is
+// blocked: Apple's public HLS example (multiple qualities + subtitle tracks).
+const STREAM_DEMO = process.env.STREAM_DEMO === '1'
+const DEMO_STREAM = {
+  ok: true,
+  m3u8: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+  subtitles: [],
+  headers: {},
+  intro: null,
+  provider: 'demo (Apple HLS example)',
+}
+
 // Primary resolver: the maintained `aniwatch` HiAnime scraper. Consumet's own
 // providers are currently rotted (every source times out even from a datacenter
 // IP — confirmed on Render 2026-07-27), so aniwatch is tried first and Consumet
@@ -562,6 +574,9 @@ app.get(
     const episode = Number(req.query.ep)
     const type = req.query.type === 'dub' ? 'dub' : 'sub'
     if (!anilistId || !episode) return { ok: false, error: 'anilist and ep are required' }
+    // Demo mode (STREAM_DEMO=1): serve a public test stream so the player can be
+    // built/tested while the real source is blocked. Same response shape.
+    if (STREAM_DEMO) return { ...DEMO_STREAM, type }
     const key = `stream:${anilistId}:${episode}:${type}`
     try {
       return await cached(key, CACHE_STREAM, () => resolveStream({ anilistId, episode, type }))
@@ -572,6 +587,87 @@ app.get(
     }
   }),
 )
+
+// ─── M2 · HLS relay (CORS proxy) ─────────────────────────────────────────────
+// Stream CDNs usually refuse cross-origin playback and often require a Referer.
+// Our player loads everything through here instead:
+//   GET /api/proxy?url=<absolute http(s) url>&ref=<referer to send, optional>
+// Playlists (.m3u8) are rewritten so every segment / key / sub-playlist / init
+// map ALSO goes through this route; media is streamed straight through (Range
+// requests supported, nothing buffered in memory).
+const PRIVATE_HOST =
+  /^(localhost|0\.0\.0\.0|127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?$|\[?f[cd])/i
+
+function proxify(target, ref) {
+  return `/api/proxy?url=${encodeURIComponent(target)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`
+}
+
+// Rewrite every URI in an HLS playlist to go through the relay.
+function rewritePlaylist(text, baseUrl, ref) {
+  const abs = (u) => proxify(new URL(u, baseUrl).href, ref)
+  return text
+    .split(/\r?\n/)
+    .map((line) => {
+      const t = line.trim()
+      if (!t) return line
+      if (t.startsWith('#')) return line.replace(/URI="([^"]+)"/g, (_, u) => `URI="${abs(u)}"`)
+      return abs(t)
+    })
+    .join('\n')
+}
+
+app.get('/api/proxy', async (req, res) => {
+  let target
+  try {
+    target = new URL(String(req.query.url || ''))
+  } catch {
+    return res.status(400).json({ error: 'bad url' })
+  }
+  if (!/^https?:$/.test(target.protocol) || PRIVATE_HOST.test(target.hostname)) {
+    return res.status(400).json({ error: 'url not allowed' })
+  }
+  const ref = req.query.ref ? String(req.query.ref) : ''
+  const headers = { 'User-Agent': 'Mozilla/5.0 BloodFang-relay' }
+  if (ref) {
+    headers.Referer = ref
+    try {
+      headers.Origin = new URL(ref).origin
+    } catch {
+      /* ignore bad referer */
+    }
+  }
+  if (req.headers.range) headers.Range = req.headers.range
+
+  try {
+    const upstream = await fetch(target.href, { headers, redirect: 'follow' })
+    const type = upstream.headers.get('content-type') || ''
+    const isPlaylist =
+      /mpegurl|m3u/i.test(type) || /\.m3u8(\?|$)/i.test(upstream.url || target.href)
+    res.setHeader('Access-Control-Allow-Origin', '*')
+
+    if (isPlaylist) {
+      const text = await upstream.text()
+      if (!upstream.ok || !text.trimStart().startsWith('#EXTM3U')) {
+        return res.status(upstream.ok ? 502 : upstream.status).send(text.slice(0, 200))
+      }
+      res.setHeader('Content-Type', 'application/vnd.apple.mpegurl')
+      res.setHeader('Cache-Control', 'no-store')
+      return res.send(rewritePlaylist(text, upstream.url || target.href, ref))
+    }
+
+    // Media / keys / subtitles: stream through untouched.
+    res.status(upstream.status)
+    for (const h of ['content-type', 'content-length', 'content-range', 'accept-ranges']) {
+      const v = upstream.headers.get(h)
+      if (v) res.setHeader(h, v)
+    }
+    if (!upstream.body) return res.end()
+    const { Readable } = await import('node:stream')
+    Readable.fromWeb(upstream.body).on('error', () => res.end()).pipe(res)
+  } catch (err) {
+    if (!res.headersSent) res.status(502).json({ error: err?.message || 'relay failed' })
+  }
+})
 
 // In production, this one server also serves the built React app (dist/), so the
 // whole thing runs on a single port with no Vite. In dev there's no build, so we

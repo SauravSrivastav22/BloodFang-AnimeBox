@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getSettings } from './settings'
+import { HAS_STREAM_API } from './api'
+import NativePlayer from './NativePlayer'
 
 // Free in-app anime playback via third-party embed sources, keyed by AniList/MAL
 // id + episode number (works for ANY title, independent of the scraper
@@ -25,6 +27,12 @@ const SERVERS = [
   //     url: ({ anilist, ep, type }) => `https://vidlink.pro/anime/${anilist}/${ep}/${type}` },
   // Also dead (checked 2026-11-08): vidsrc.cc (522), megaplay.buzz (410 on every
   // title). Add a replacement here if a reliable AniList-id provider is found.
+
+  // Our own hls.js player (NativePlayer). Only offered when a stream backend is
+  // reachable: the local build (same-origin /api) or a hosted build with
+  // VITE_STREAM_API set. Kept AFTER Vidnest so Vidnest stays the default until
+  // the real source is unblocked; promote it to first once it's reliable.
+  ...(HAS_STREAM_API ? [{ key: 'native', label: 'BloodFang (beta)', native: true }] : []),
 ]
 
 // Remember the server the user last PICKED so it's the default next time.
@@ -70,7 +78,18 @@ export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = 
   const timerRef = useRef(null)
 
   const server = SERVERS[serverIdx]
-  const src = server.url({ anilist: anilistId, mal: malId ?? anilistId, ep: episode, type })
+  const src = server.native
+    ? ''
+    : server.url({ anilist: anilistId, mal: malId ?? anilistId, ep: episode, type })
+
+  // Our player couldn't play this episode → fall back to the first embed server.
+  const onNativeFail = (reason) => {
+    const fallback = SERVERS.findIndex((s) => !s.native)
+    if (fallback < 0) return
+    setNotice(`BloodFang player: ${reason} — switched to “${SERVERS[fallback].label}”.`)
+    attempted.current = new Set()
+    setServerIdx(fallback)
+  }
 
   // New episode / audio → start a fresh auto-advance chain.
   useEffect(() => {
@@ -81,12 +100,13 @@ export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = 
   // Watchdog: mark this server attempted and wait for the iframe to load. If it
   // doesn't within LOAD_TIMEOUT_MS, auto-advance to the next untried server.
   useEffect(() => {
+    if (server.native) return // NativePlayer has its own loading/failure handling
     setStatus('loading')
     attempted.current.add(server.key)
     clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {
       setStatus('timeout')
-      const nextIdx = SERVERS.findIndex((s) => !attempted.current.has(s.key))
+      const nextIdx = SERVERS.findIndex((s) => !s.native && !attempted.current.has(s.key))
       if (nextIdx >= 0) {
         setNotice(`“${server.label}” didn’t respond — trying “${SERVERS[nextIdx].label}”…`)
         setServerIdx(nextIdx)
@@ -144,33 +164,53 @@ export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = 
             Dub
           </button>
         )}
-        <a className="chip embed-open" href={src} target="_blank" rel="noopener noreferrer">
-          Open in new tab ↗
-        </a>
+        {!server.native && (
+          <a className="chip embed-open" href={src} target="_blank" rel="noopener noreferrer">
+            Open in new tab ↗
+          </a>
+        )}
       </div>
 
       {/* Auto-recovery notice (server timed out / switched) */}
       {notice && <p className="embed-notice">⚠ {notice}</p>}
 
-      <p className="embed-note">
-        ▶ Playing “{server.label}”. Use <strong>Sub/Dub</strong> above for audio. For
-        the <strong>subtitle language</strong> (if the title has more than one), open
-        the player’s own <strong>CC / ⚙ menu</strong> at the bottom-right of the video.
-        If the player is blank or says “couldn’t find this episode”, switch{' '}
-        <strong>Audio to Sub</strong> (dubs are often missing)
-        {SERVERS.length > 1 ? ' or pick another Server' : ''}. These free sources
-        don’t carry every title, are volatile and may show ads.
-      </p>
-      <p className="embed-tip" data-no-loader>
-        💡 These free servers open pop-up/new-tab ads on click — that’s the provider,
-        not BloodFang, and blocking them in-app stops the video from playing. To kill
-        the pop-ups, use a browser ad-blocker like{' '}
-        <a href="https://ublockorigin.com/" target="_blank" rel="noopener noreferrer">
-          uBlock Origin
-        </a>{' '}
-        or the Brave browser.
-      </p>
+      {server.native ? (
+        <p className="embed-note">
+          ▶ BloodFang’s own player (beta): pre-loads ~2 minutes ahead, with its own
+          Quality and Subtitles menus below the video and no pop-up ads. If an episode
+          can’t be found it switches back to an embed server automatically.
+        </p>
+      ) : (
+        <>
+          <p className="embed-note">
+            ▶ Playing “{server.label}”. Use <strong>Sub/Dub</strong> above for audio. For
+            the <strong>subtitle language</strong> (if the title has more than one), open
+            the player’s own <strong>CC / ⚙ menu</strong> at the bottom-right of the video.
+            If the player is blank or says “couldn’t find this episode”, switch{' '}
+            <strong>Audio to Sub</strong> (dubs are often missing)
+            {SERVERS.length > 1 ? ' or pick another Server' : ''}. These free sources
+            don’t carry every title, are volatile and may show ads.
+          </p>
+          <p className="embed-tip" data-no-loader>
+            💡 These free servers open pop-up/new-tab ads on click — that’s the provider,
+            not BloodFang, and blocking them in-app stops the video from playing. To kill
+            the pop-ups, use a browser ad-blocker like{' '}
+            <a href="https://ublockorigin.com/" target="_blank" rel="noopener noreferrer">
+              uBlock Origin
+            </a>{' '}
+            or the Brave browser.
+          </p>
+        </>
+      )}
 
+      {server.native ? (
+        <NativePlayer
+          anilistId={anilistId}
+          episode={episode}
+          type={type}
+          onFail={onNativeFail}
+        />
+      ) : (
       <div className="embed-frame">
         {/* NO `sandbox` attribute — these free embed providers detect it and
             refuse to play ("Please Disable Sandbox"): their anti-adblock checks
@@ -195,6 +235,7 @@ export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = 
           </div>
         )}
       </div>
+      )}
 
       {SERVERS.length > 1 && (
         <div className="embed-actions" data-no-loader>

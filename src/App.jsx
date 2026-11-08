@@ -375,6 +375,10 @@ export default function App() {
   // spam history) — makes the browse view shareable/bookmarkable.
   const syncUrl = useCallback(
     (q, genres, sort, adv = {}) => {
+      // Only on the browse page. App stays mounted on /anime/:id too, and its
+      // first search ran this there — wiping ?ep from shared/bookmarked
+      // episode links on a fresh load (they opened the title but not the ep).
+      if (window.location.pathname !== '/') return
       const params = {}
       if (q) params.q = q
       if (genres.length) params.genres = genres.join(',')

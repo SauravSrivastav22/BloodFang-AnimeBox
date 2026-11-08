@@ -151,3 +151,28 @@ export const GENRES = [
   'Supernatural',
   'Thriller',
 ]
+
+// ─── Our own player (custom HLS) ─────────────────────────────────────────────
+// Base URL of the stream backend (/api/stream + /api/proxy). Local build: same
+// origin (''). Hosted static build: only available when VITE_STREAM_API points
+// at a deployed backend; otherwise our player is hidden and embeds are used.
+export const STREAM_API = (import.meta.env.VITE_STREAM_API || '').replace(/\/$/, '')
+export const HAS_STREAM_API = !DIRECT || Boolean(STREAM_API)
+
+// Resolve (AniList id, episode, sub|dub) → { ok, m3u8, subtitles, headers, ... }.
+// Never throws for "not found" — returns { ok:false, error } so the player can
+// fall back to an embed server.
+export async function getStream(anilistId, episode, type) {
+  const q = `anilist=${encodeURIComponent(anilistId)}&ep=${encodeURIComponent(episode)}&type=${type}`
+  try {
+    return await get(`${STREAM_API}/api/stream?${q}`, 60000)
+  } catch (err) {
+    return { ok: false, error: err?.message || 'Stream service unreachable' }
+  }
+}
+
+// Route a media/subtitle URL through our relay (CORS + Referer handling).
+export const proxied = (url, referer) =>
+  `${STREAM_API}/api/proxy?url=${encodeURIComponent(url)}${
+    referer ? `&ref=${encodeURIComponent(referer)}` : ''
+  }`

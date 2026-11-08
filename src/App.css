@@ -455,6 +455,53 @@ body {
   height: 100%;
   border: 0;
 }
+/* BloodFang's own player (NativePlayer) */
+.native-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.native-frame video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+.native-error {
+  color: #ffb3b3;
+  text-align: center;
+  padding: 0 1rem;
+}
+.native-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.1rem;
+  margin-top: 0.6rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.native-bar select {
+  margin-left: 0.3rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 0.82rem;
+}
+.native-buffer strong {
+  color: var(--accent);
+}
+.native-provider {
+  margin-left: auto;
+  opacity: 0.7;
+}
 .embed-controls {
   display: flex;
   align-items: center;

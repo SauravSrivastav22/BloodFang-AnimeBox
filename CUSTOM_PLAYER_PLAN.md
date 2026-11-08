@@ -1,5 +1,28 @@
 # BloodFang — Custom Player: Step-by-Step Build Plan
 
+> ## ▶️ RESUMED 2026-11-08 — player built (M2 + M3), source still blocked
+> - **M2 done:** `/api/proxy?url=&ref=` in `server/index.js` — rewrites every
+>   playlist URI (variants, segments, keys, `EXT-X-MAP`, audio/subtitle
+>   `EXT-X-MEDIA`) through the relay, streams media with Range/206, CORS `*`,
+>   blocks private/localhost targets.
+> - **M3 done:** `src/NativePlayer.jsx` — hls.js (lazy-loaded) with the 2-min
+>   buffer config, Quality menu, Subtitles menu (external VTT + in-stream HLS
+>   tracks), live "Buffered ahead" readout, resume position, Safari native HLS,
+>   auto-fallback to Vidnest via `onFail`. Shown as the **"BloodFang (beta)"**
+>   server, only when a stream backend exists (local build, or hosted build with
+>   `VITE_STREAM_API`).
+> - **Demo mode:** `STREAM_DEMO=1 node server/index.js` makes `/api/stream`
+>   return Apple's public HLS example, so the player can be tested end to end.
+>   Verified headless: 1080p playback, buffer 15s → 59s in 22s, 7 quality levels,
+>   English subtitles showing.
+> - **Still blocked = M1 source.** From this PC, `hianime.to` times out (ISP
+>   block; mirrors are parked/redirect back). Plan: Cloudflare WARP (Windows app,
+>   WARP mode) on the PC running the backend → re-test `/api/probe` +
+>   `/api/stream`. If that fails, a paid VPS / residential proxy.
+> - Also fixed on the way: VidLink removed (its player calls `localhost:8080`),
+>   server pref no longer pinned on iframe load, and deep links lost `?ep` on a
+>   fresh load (App's URL sync ran on every route).
+
 _Created: 2026-07-16 · Status: **SHELVED 2026-07-27** — M1 attempted, blocked (see below)_
 
 > ## ⏸️ SHELVED — why (2026-07-27)
