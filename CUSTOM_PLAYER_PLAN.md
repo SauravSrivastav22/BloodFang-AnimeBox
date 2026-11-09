@@ -1,5 +1,11 @@
 # BloodFang — Custom Player: Step-by-Step Build Plan
 
+> ## ✅ UPDATE 2026-11-09 — real anime plays in our player (local build)
+> `/api/stream` now finds episodes on **anitaku.io**, and "BloodFang (beta)"
+> plays them with no ads and a real **2-minute buffer**. Vidnest stays the default
+> server and the automatic fallback. See "Source test 2026-11-09" below. Not on
+> the live site yet: that needs an always-on backend.
+>
 > ## ▶️ RESUMED 2026-11-08 — player built (M2 + M3), source still blocked
 > - **M2 done:** `/api/proxy?url=&ref=` in `server/index.js` — rewrites every
 >   playlist URI (variants, segments, keys, `EXT-X-MAP`, audio/subtitle
@@ -68,34 +74,66 @@
 >   HiAnime is down, it fails from *anywhere*, so a **paid VPS would not help**
 >   and is no longer recommended for now.
 >
-> ### Next steps (in order)
-> 1. User: with WARP on, open https://hianime.to in Chrome and report:
->    - **loads normally** → the block is specific to our server's requests;
->      investigate why.
->    - **error / doesn't load / "moved to…"** → HiAnime is gone or moved; point
->      the resolver at the new domain, or pick a **new episode source**. The
->      realistic reachable candidate is Gogoanime/anitaku (`anitaku.pe` → 200);
->      test that it yields a playable stream before writing real code.
-> 2. Once a source works: restart the backend **without** `STREAM_DEMO`, test
->    `/api/stream` on Death Note ep 1 (sub + dub), One Piece, a movie → play in
->    "BloodFang (beta)".
-> 3. If it works: promote "BloodFang (beta)" to the default server locally; then
->    plan the public-site backend (host + `VITE_STREAM_API`).
-> 4. Deploy the pending `?ep` deep-link fix to the live site.
+> ### Source test 2026-11-09 — anitaku.io works
+> **Correction:** `anitaku.pe` (named here earlier because it returned 200) is a
+> parked "domain for sale" page.
 >
-> The player and relay don't change; only the episode-lookup step gets swapped.
-> No Cloudflare-challenge bypass either way. WARP can be turned off when not
-> testing (it routes all PC traffic through Cloudflare).
+> | Source | Result |
+> |---|---|
+> | `anitaku.io` | **Used.** Live WordPress site, about 728 series, 720p MP4s on Blogger |
+> | `gogoanime.com.by` | Only wraps a `megaplay.buzz` embed, so no video link |
+> | Vidnest's CDN (`megap.shiora.top`) | 403 to our relay; served only through Vidnest's own proxy. Not pursued |
+> | Other Gogoanime/Anitaku domains | No response from this PC (WARP off) |
+>
+> **How it works**
+> - AniList titles → anitaku.io WordPress search (`/wp-json/wp/v2/search`) → series
+>   page → episode page → Blogger player → `googlevideo.com` MP4 (720p, else 360p).
+>   Titles must match exactly (season wording normalised), so a miss falls back
+>   rather than playing the wrong show.
+> - Blogger links only work for the User-Agent that requested them and expire in
+>   about 8 hours, so the lookup and `/api/proxy` share `RELAY_UA`. The backend
+>   doing the lookup must also be the one relaying the video.
+> - `src/mp4Buffer.js` (mp4box 0.5.2 + Media Source) downloads 1 MB ranges and keeps
+>   120s ahead / 60s behind. Chrome on its own stopped around 35s.
+> - HiAnime is off unless `STREAM_HIANIME=1` (trying it cost about 25s per miss).
+>
+> **Verified in headless Chrome on the real page**
+> - One Piece 1180: 720p, 125s buffered after 45s, no page errors.
+> - Aoashi S2 ep 1: reached 120–133s; seeking to 10:00 and back to 0:30 refilled it.
+> - Death Note (not on source): falls back to Vidnest. Default user: still Vidnest.
+> - HLS path (demo stream): quality + subtitle menus still work.
+>
+> **Limits**
+> - Coverage gaps: no Death Note, Naruto, Attack on Titan, Fullmetal Alchemist in
+>   search; One Piece ep 1 missing while 1180 exists; Frieren S2 uses a host we
+>   can't read.
+> - Few dubs, and the site defaults to Dub when a show has one → test with Sub.
+> - 720p only, subtitles burned in, so the quality/subtitle menus are hidden.
+> - Some episodes redirect to a Google node sending about 70 KB/s (below the
+>   video's bitrate; Aoashi S2 ep 5 measured). If a video can't start within 20s,
+>   the player falls back to Vidnest.
+>
+> ### Next steps (in order)
+> 1. User: try real shows on "BloodFang (beta)" with Sub and judge it.
+> 2. If good: decide whether it becomes the default server.
+> 3. Public site: needs an always-on backend + `VITE_STREAM_API`. All viewers'
+>    video passes through it, so bandwidth is the main cost.
+> 4. Optional: check https://hianime.to in Chrome. If it returns, `STREAM_HIANIME=1`
+>    brings back multi-quality streams and subtitle menus.
+> 5. Deploy the pending `?ep` deep-link fix to the live site.
+>
+> No Cloudflare-challenge bypass, ever. WARP isn't needed for anitaku.io.
 >
 > ### How to run / test locally
-> - Normal: `npm run prod` → http://localhost:3001
+> - Normal: `npm run prod` → http://localhost:3001, then pick **Server: BloodFang
+>   (beta)** and **Sub** (try `/anime/21?ep=1180` or `/anime/191788?ep=1`)
 > - Demo player: `npm run build` then `STREAM_DEMO=1 node server/index.js`
 >   (PowerShell: `$env:STREAM_DEMO="1"; node server/index.js`), open
 >   `/anime/1535?ep=1`, pick **Server: BloodFang (beta)**.
 > - Relay check: `/api/proxy?url=<encoded m3u8>` must return `#EXTM3U` with every
 >   URI rewritten to `/api/proxy?...`.
 
-_Created: 2026-07-16 · Status: **SHELVED 2026-07-27** — M1 attempted, blocked (see below)_
+_Created: 2026-07-16 · Status: shelved 2026-07-27, resumed 2026-11-08, **working locally 2026-11-09** (see top)_
 
 > ## ⏸️ SHELVED — why (2026-07-27)
 > We attempted M1 (the stream resolver) end-to-end and hit two independent walls:

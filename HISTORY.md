@@ -583,6 +583,17 @@ Post-roadmap enhancement pass — **15 features (A–O)**, all lint-clean + buil
   a browser; if it's gone/moved, swap the episode source (candidate:
   Gogoanime/anitaku). Details in `CUSTOM_PLAYER_PLAN.md` → "WARP test
   2026-11-09".
+- ❌ **`anitaku.pe` is a parked domain** — the 200 above was a "for sale" page.
+  The live site is `anitaku.io`.
+- ▶️ **Real anime plays in BloodFang's own player** (local build) — `/api/stream`
+  finds episodes on anitaku.io (720p MP4s on Blogger). No ads. Vidnest stays the
+  default and the automatic fallback for missing shows, missing dubs, and sources
+  too slow to start in 20 s.
+- ⏳ **2-minute buffer for MP4s** — Chrome stopped around 35 s, so
+  `src/mp4Buffer.js` (mp4box + Media Source) loads ranges itself and holds 120 s.
+  Verified: One Piece 1180 at 125 s buffered; seeking refills it.
+- 🔧 Relay now cancels the upstream download when the browser disconnects.
+  HiAnime lookup is off unless `STREAM_HIANIME=1`.
 
 ---
 

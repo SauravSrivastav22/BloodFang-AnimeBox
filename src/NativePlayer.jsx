@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getStream, proxied } from './api'
+import { playMp4Buffered } from './mp4Buffer'
 
 // BloodFang's own video player (custom-player plan, M3).
 // Resolves a real HLS stream via /api/stream, plays it through our /api/proxy
@@ -18,6 +19,9 @@ const HLS_CONFIG = {
   backBufferLength: 60, // keep 1 min behind for instant rewind
   enableWorker: true,
 }
+
+// A source too slow to start in this long would only buffer; use the fallback.
+const MP4_START_TIMEOUT_MS = 20000
 
 const posKey = (id, ep) => `bloodfang:pos:${id}:${ep}`
 function loadPos(id, ep) {
@@ -40,6 +44,7 @@ const langLabel = (s) => s?.name || s?.lang || s?.label || 'Unknown'
 export default function NativePlayer({ anilistId, episode, type, onFail, onEnded }) {
   const videoRef = useRef(null)
   const hlsRef = useRef(null)
+  const stopMp4Ref = useRef(null)
   const [status, setStatus] = useState('resolving') // resolving | loading | ready | error
   const [error, setError] = useState('')
   const [provider, setProvider] = useState('')
@@ -53,6 +58,7 @@ export default function NativePlayer({ anilistId, episode, type, onFail, onEnded
   // Resolve + attach the stream whenever the episode / audio changes.
   useEffect(() => {
     let cancelled = false
+    let startTimer = null
     const video = videoRef.current
     setStatus('resolving')
     setError('')
@@ -72,10 +78,10 @@ export default function NativePlayer({ anilistId, episode, type, onFail, onEnded
     ;(async () => {
       const s = await getStream(anilistId, episode, type)
       if (cancelled) return
-      if (!s?.ok || !s.m3u8) return fail(s?.error || 'No stream found for this episode')
+      if (!s?.ok || !(s.m3u8 || s.url)) return fail(s?.error || 'No stream found for this episode')
       setProvider(s.provider || '')
       const ref = s.headers?.Referer || s.headers?.referer || ''
-      const src = proxied(s.m3u8, ref)
+      const src = proxied(s.m3u8 || s.url, ref)
       const ext = (s.subtitles ?? []).map((t) => ({ lang: t.lang, url: proxied(t.url, ref) }))
       setExtSubs(ext)
       setStatus('loading')
@@ -86,6 +92,17 @@ export default function NativePlayer({ anilistId, episode, type, onFail, onEnded
         if (resume > 5 && video.duration && resume < video.duration - 10) video.currentTime = resume
         setStatus('ready')
         video.play().catch(() => {}) // autoplay may be blocked — user presses play
+      }
+
+      // Single-file sources get the same 2-minute buffer via our own loader.
+      if (s.kind === 'mp4') {
+        video.addEventListener('loadedmetadata', onReady, { once: true })
+        video.addEventListener('error', () => fail('This video could not be played'), { once: true })
+        stopMp4Ref.current = playMp4Buffered(video, src, fail)
+        startTimer = setTimeout(() => {
+          if (video.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) fail('This source is too slow right now')
+        }, MP4_START_TIMEOUT_MS)
+        return
       }
 
       const { default: Hls } = await import('hls.js')
@@ -124,8 +141,11 @@ export default function NativePlayer({ anilistId, episode, type, onFail, onEnded
 
     return () => {
       cancelled = true
+      clearTimeout(startTimer)
       hlsRef.current?.destroy()
       hlsRef.current = null
+      stopMp4Ref.current?.()
+      stopMp4Ref.current = null
       if (video) {
         video.removeAttribute('src')
         video.load()
@@ -213,32 +233,36 @@ export default function NativePlayer({ anilistId, episode, type, onFail, onEnded
 
       {status === 'ready' && (
         <div className="native-bar" data-no-loader>
-          <label>
-            Quality{' '}
-            <select value={level} onChange={(e) => setLevel(Number(e.target.value))}>
-              <option value={-1}>Auto</option>
-              {levels
-                .slice()
-                .sort((a, b) => (b.height || b.bitrate) - (a.height || a.bitrate))
-                .filter((l, i, arr) => i === 0 || qualityLabel(l) !== qualityLabel(arr[i - 1]))
-                .map((l) => (
-                  <option key={l.i} value={l.i}>
-                    {qualityLabel(l)}
+          {levels.length > 0 && (
+            <label>
+              Quality{' '}
+              <select value={level} onChange={(e) => setLevel(Number(e.target.value))}>
+                <option value={-1}>Auto</option>
+                {levels
+                  .slice()
+                  .sort((a, b) => (b.height || b.bitrate) - (a.height || a.bitrate))
+                  .filter((l, i, arr) => i === 0 || qualityLabel(l) !== qualityLabel(arr[i - 1]))
+                  .map((l) => (
+                    <option key={l.i} value={l.i}>
+                      {qualityLabel(l)}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          )}
+          {subOptions.length > 0 && (
+            <label>
+              Subtitles{' '}
+              <select value={subKey} onChange={(e) => setSubKey(e.target.value)}>
+                <option value="off">Off</option>
+                {subOptions.map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
                   </option>
                 ))}
-            </select>
-          </label>
-          <label>
-            Subtitles{' '}
-            <select value={subKey} onChange={(e) => setSubKey(e.target.value)}>
-              <option value="off">Off</option>
-              {subOptions.map((o) => (
-                <option key={o.key} value={o.key}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
+              </select>
+            </label>
+          )}
           <span className="native-buffer" title="How much video is already downloaded ahead">
             Buffered ahead: <strong>{Math.round(ahead)}s</strong> / 120s
           </span>

@@ -453,7 +453,7 @@ const hianime = new HiAnime.Scraper()
 // which is title-based (no AniList-id mapping). Cached with the rest of the meta.
 function fetchTitles(id) {
   return cached(`titles:${id}`, CACHE_META, async () => {
-    const query = `query($id:Int){Media(id:$id,type:ANIME){title{romaji english}format}}`
+    const query = `query($id:Int){Media(id:$id,type:ANIME){title{romaji english}synonyms format}}`
     const res = await fetch('https://graphql.anilist.co', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -554,7 +554,146 @@ async function resolveViaConsumet({ anilistId, episode, type }) {
   }
 }
 
+// ─── anitaku.io resolver ─────────────────────────────────────────────────────
+// A WordPress site whose episodes are single 720p MP4s (subtitles burned in)
+// hosted on Blogger. Blogger's video links only work for the User-Agent that
+// requested them, so every request here uses RELAY_UA, the same one /api/proxy
+// streams with. Titles must match exactly: a miss falls back to Vidnest, which
+// is far better than quietly playing the wrong show.
+const RELAY_UA = 'Mozilla/5.0 BloodFang-relay'
+const ANITAKU = 'https://anitaku.io'
+const CACHE_ANITAKU_SERIES = 30 * 60 * 1000
+
+async function anitakuFetch(url) {
+  const res = await fetch(url, {
+    headers: { 'User-Agent': RELAY_UA },
+    redirect: 'follow',
+    signal: AbortSignal.timeout(12000),
+  })
+  if (!res.ok) throw new Error(`anitaku.io responded ${res.status}`)
+  return { html: await res.text(), finalUrl: res.url }
+}
+
+const decodeEntities = (s) =>
+  (s || '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+
+// Compares titles across sites: "Journey's"/"Journey’s" and "2nd Season"/"Season 2".
+const titleKey = (s) =>
+  norm(decodeEntities(s).replace(/['’`]/g, ''))
+    .replace(/\b(\d+)(?:st|nd|rd|th) season\b/g, 'season $1')
+
+const anitakuSlug = (url) => url.replace(/\/$/, '').split('/').pop()
+
+function anitakuEpisodeLinks(html) {
+  const found = html.match(/https:\/\/anitaku\.io\/[a-z0-9-]+-english-(?:subbed|dubbed)\/?/g) ?? []
+  return [...new Set(found)].map((url) => ({
+    url,
+    number: Number(url.match(/-episode-(\d+)-english-/)?.[1]) || null,
+    dub: /-english-dubbed/.test(url),
+  }))
+}
+
+// AniList id → the matching series on anitaku.io and its episode links.
+function findAnitakuSeries(anilistId) {
+  return cached(`anitaku:series:${anilistId}`, CACHE_ANITAKU_SERIES, async () => {
+    const meta = await withTimeout(fetchTitles(anilistId), 8000, 'AniList title')
+    const names = [meta?.title?.english, meta?.title?.romaji, ...(meta?.synonyms ?? [])].filter(Boolean)
+    if (!names.length) throw new Error('No title for that AniList id')
+    const wanted = new Set(names.map(titleKey))
+
+    for (const term of names.slice(0, 2)) {
+      const { html: json } = await anitakuFetch(
+        `${ANITAKU}/wp-json/wp/v2/search?per_page=20&search=${encodeURIComponent(term)}`,
+      )
+      const series = JSON.parse(json).filter((r) => r.subtype === 'series')
+      const exact = series.find((r) => wanted.has(titleKey(r.title)))
+      // No exact name: the series page also lists alternative titles.
+      for (const candidate of exact ? [exact] : series.slice(0, 3)) {
+        const { html, finalUrl } = await anitakuFetch(candidate.url)
+        if (finalUrl.includes('/browse')) continue
+        const alt = decodeEntities(html.match(/<span class="alter">([^<]*)/)?.[1]).split(',')
+        if (candidate === exact || alt.some((a) => wanted.has(titleKey(a)))) {
+          return { slug: anitakuSlug(candidate.url), format: meta?.format, links: anitakuEpisodeLinks(html) }
+        }
+      }
+    }
+    throw new Error('Title not found on anitaku.io')
+  })
+}
+
+// Every player on an episode page: the visible iframe + base64 server options.
+function anitakuPlayerUrls(html) {
+  const decoded = [...html.matchAll(/<option[^>]*value="([A-Za-z0-9+/=]{20,})"/g)].map((m) =>
+    Buffer.from(m[1], 'base64').toString('utf8'),
+  )
+  const urls = [html, ...decoded].flatMap((h) =>
+    [...h.matchAll(/<iframe[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, '&')),
+  )
+  return [...new Set(urls)]
+}
+
+async function bloggerMp4(playerUrl) {
+  const { html } = await anitakuFetch(playerUrl)
+  const text = html
+    .replace(/&quot;/g, '"')
+    .replace(/\\u003d/g, '=')
+    .replace(/\\u0026/g, '&')
+    .replace(/&amp;/g, '&')
+    .replace(/\\\//g, '/')
+  const urls = text.match(/https:\/\/[^"\\\s]*googlevideo\.com\/videoplayback[^"\\\s]*/g) ?? []
+  const byItag = (n) => urls.find((u) => new RegExp(`[?&]itag=${n}(&|$)`).test(u))
+  if (byItag(22)) return { url: byItag(22), quality: '720p' }
+  if (byItag(18)) return { url: byItag(18), quality: '360p' }
+  return null
+}
+
+async function resolveViaAnitaku({ anilistId, episode, type }) {
+  const dub = type === 'dub'
+  const series = await findAnitakuSeries(anilistId)
+  const sameAudio = series.links.filter((l) => l.dub === dub)
+  let link = sameAudio.find((l) => l.number === Number(episode))
+  // Movies have one page and often no episode number in the address.
+  if (!link && series.format === 'MOVIE' && Number(episode) === 1) link = sameAudio[0]
+  // Series pages can list only part of a long run, so also try the usual address.
+  const pageUrl =
+    link?.url ??
+    `${ANITAKU}/${series.slug}-episode-${episode}-english-${dub ? 'dubbed' : 'subbed'}/`
+
+  const { html, finalUrl } = await anitakuFetch(pageUrl)
+  if (finalUrl.includes('/browse')) throw new Error(`Episode ${episode} not on anitaku.io`)
+
+  for (const playerUrl of anitakuPlayerUrls(html)) {
+    if (!/blogger\.com\/video\.g/.test(playerUrl)) continue
+    const video = await bloggerMp4(playerUrl)
+    if (video) {
+      return {
+        ok: true,
+        url: video.url,
+        kind: 'mp4',
+        subtitles: [],
+        headers: {},
+        provider: `anitaku.io · ${video.quality} · subtitles in the video`,
+        type: dub ? 'dub' : 'sub',
+      }
+    }
+  }
+  throw new Error('No playable video on that episode page')
+}
+
+// HiAnime has been unreachable since 2026-11, and trying it costs ~25s before
+// the player can fall back. STREAM_HIANIME=1 turns it back on if it returns.
+const USE_HIANIME = process.env.STREAM_HIANIME === '1'
+
 async function resolveStream(opts) {
+  if (!USE_HIANIME) return resolveViaAnitaku(opts)
+  try {
+    return await resolveViaAnitaku(opts)
+  } catch {
+    // Not on anitaku.io: try HiAnime below.
+  }
   try {
     return await resolveViaAniwatch(opts)
   } catch (err) {
@@ -627,7 +766,7 @@ app.get('/api/proxy', async (req, res) => {
     return res.status(400).json({ error: 'url not allowed' })
   }
   const ref = req.query.ref ? String(req.query.ref) : ''
-  const headers = { 'User-Agent': 'Mozilla/5.0 BloodFang-relay' }
+  const headers = { 'User-Agent': RELAY_UA }
   if (ref) {
     headers.Referer = ref
     try {
@@ -638,12 +777,21 @@ app.get('/api/proxy', async (req, res) => {
   }
   if (req.headers.range) headers.Range = req.headers.range
 
+  // Seeking in an MP4 drops the connection; stop the upstream download with it.
+  const upstreamAbort = new AbortController()
+  res.on('close', () => upstreamAbort.abort())
+
   try {
-    const upstream = await fetch(target.href, { headers, redirect: 'follow' })
+    const upstream = await fetch(target.href, {
+      headers,
+      redirect: 'follow',
+      signal: upstreamAbort.signal,
+    })
     const type = upstream.headers.get('content-type') || ''
     const isPlaylist =
       /mpegurl|m3u/i.test(type) || /\.m3u8(\?|$)/i.test(upstream.url || target.href)
     res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Range')
 
     if (isPlaylist) {
       const text = await upstream.text()

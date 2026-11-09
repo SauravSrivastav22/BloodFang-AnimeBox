@@ -302,12 +302,12 @@ LOW VALUE (nice-to-have)
   [x] Unaired episodes greyed out ("Not aired yet"); Next/→ stop there
   [x] VidLink removed (broken on their side); player no longer pins a server
   [x] Deep links keep ?ep on a fresh load  (committed, NOT yet deployed)
-  [~] OWN PLAYER "BloodFang (beta)" built + demo-verified (local build only).
-      Real anime blocked on the source -> see CUSTOM_PLAYER_PLAN.md
-      "Source investigation 2026-11-08" + "Next steps".
-      2026-11-09: WARP Connected (warp=on) but hianime.to STILL times out ->
-      HiAnime likely down/refusing, VPS would not help. NEXT: user opens
-      hianime.to in Chrome; if gone/moved, swap source (try Gogoanime/anitaku).
+  [~] OWN PLAYER "BloodFang (beta)" plays real anime (local build only) -- 2026-11-09
+      Source: anitaku.io (720p MP4). No ads, 2-min buffer (src/mp4Buffer.js).
+      Vidnest stays default + automatic fallback (coverage gaps, few dubs).
+      Details: CUSTOM_PLAYER_PLAN.md "Source test 2026-11-09".
+      NEXT: user tries real shows with Sub; then decide on making it default.
+      LIVE SITE: needs an always-on backend + VITE_STREAM_API.
 
 --------------------------------------------------------
  HOUSEKEEPING (user action)
