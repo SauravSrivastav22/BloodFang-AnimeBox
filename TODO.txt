@@ -307,7 +307,9 @@ LOW VALUE (nice-to-have)
       Default server where a backend exists; Vidnest is the automatic fallback.
       Details: CUSTOM_PLAYER_PLAN.md "Source test 2026-11-09".
       Popup + auto-Sub when a dub is missing (src/dubInfo.js), live site too.
-      LIVE SITE: 2-min buffer needs an always-on backend + VITE_STREAM_API.
+      LIVE SITE: 2-min buffer needs a helper server + VITE_STREAM_API.
+      NEXT: user deploys render.yaml on Render (free) and sends the URL; then
+      test anitaku.io from it. Steps: CUSTOM_PLAYER_PLAN.md "Next steps".
 
 --------------------------------------------------------
  HOUSEKEEPING (user action)

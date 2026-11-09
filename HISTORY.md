@@ -600,6 +600,11 @@ Post-roadmap enhancement pass — **15 features (A–O)**, all lint-clean + buil
   missing. `src/dubInfo.js` reads two public lists (AniSchedule per episode for
   airing shows, MAL-Dubs per title), switches to Sub and explains why, with a
   "Try Dub anyway" escape. Dub resumes by itself on episodes that have one.
+- 🚀 Live site deployed with the dub popup and the `?ep` fix; code pushed to
+  GitHub (`2c6ad3b`). The live site still uses Vidnest, whose buffering we can't
+  control, because our player needs a helper server Firebase can't run.
+- ⏭️ **Next:** free Render deploy (`render.yaml`), then test anitaku.io from there.
+  Waiting on the user's Render service URL.
 
 ---
 

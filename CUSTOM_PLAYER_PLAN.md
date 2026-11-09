@@ -114,11 +114,33 @@
 >   video's bitrate; Aoashi S2 ep 5 measured). If a video can't start within 20s,
 >   the player falls back to Vidnest.
 >
+> ### Where it stands (end of 2026-11-09)
+> | Step | Status |
+> |---|---|
+> | Code on GitHub | Done (`2c6ad3b`) |
+> | Firebase live site, with the dub popup | Done, verified on One Piece 1167 / 1100 |
+> | Render helper server | **Not done**: no service URL yet (`bloodfang-api.onrender.com` returns 404) |
+> | Our player + 2-min buffer on the live site | Waiting on Render |
+>
+> Why the live site doesn't load extra: it can only use Vidnest, whose buffering
+> happens inside its own cross-origin frame. Why a helper is needed at all: a
+> browser can't read anitaku.io / Blogger pages (cross-origin), and video links
+> only work for the program that requested them. Firebase can't run that helper.
+>
 > ### Next steps (in order)
-> 1. User: try real shows on "BloodFang (beta)" with Sub and judge it.
-> 2. Public site: needs an always-on backend + `VITE_STREAM_API`. All viewers'
->    video passes through it, so bandwidth is the main cost.
-> 3. Optional: check https://hianime.to in Chrome. If it returns, `STREAM_HIANIME=1`
+> 1. **Render (free, try first).** User: https://dashboard.render.com → log in with
+>    GitHub → New → Blueprint → `BloodFang-AnimeBox` (uses `render.yaml`), or
+>    Manual Deploy on an existing `bloodfang-api`. Send the `*.onrender.com` URL.
+>    Limits: sleeps after ~15 min idle (about a minute to wake); monthly bandwidth
+>    cap, roughly 100 GB to be confirmed, at about 230 MB per episode.
+> 2. Test `/api/stream` from Render. **Unknown whether anitaku.io allows it**
+>    (Render was blocked from HiAnime in July).
+> 3. If it works: build with `VITE_STREAM_API=<render url>`, deploy to Firebase, and
+>    verify playback + buffer on the live site.
+> 4. If blocked: Oracle free server, then PC + tunnel (only while the PC is on).
+>    Paid server (about $4–6/mo) is the last resort.
+> 5. User: try real shows on "BloodFang (beta)" with Sub and judge it.
+> 6. Optional: check https://hianime.to in Chrome. If it returns, `STREAM_HIANIME=1`
 >    brings back multi-quality streams and subtitle menus.
 >
 > No Cloudflare-challenge bypass, ever. WARP isn't needed for anitaku.io.
