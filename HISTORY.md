@@ -574,6 +574,16 @@ Post-roadmap enhancement pass — **15 features (A–O)**, all lint-clean + buil
   hidden on the hosted build until a stream backend is online). The `?ep` fix
   is committed but not yet deployed.
 
+### 2026-11-09
+- 🌐 **Cloudflare WARP tested** — installed and Connected (`warp=on`); other
+  sites load through it (anitaku 200, google 200), but `hianime.to` **still
+  times out** on IPv4 and IPv6. Points to HiAnime itself being down or refusing
+  connections, not just the ISP block, so WARP alone doesn't unblock the
+  source and a paid VPS wouldn't help either. Next: user checks hianime.to in
+  a browser; if it's gone/moved, swap the episode source (candidate:
+  Gogoanime/anitaku). Details in `CUSTOM_PLAYER_PLAN.md` → "WARP test
+  2026-11-09".
+
 ---
 
 ## Task Log / TODO

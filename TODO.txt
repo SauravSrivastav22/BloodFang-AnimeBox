@@ -305,7 +305,9 @@ LOW VALUE (nice-to-have)
   [~] OWN PLAYER "BloodFang (beta)" built + demo-verified (local build only).
       Real anime blocked on the source -> see CUSTOM_PLAYER_PLAN.md
       "Source investigation 2026-11-08" + "Next steps".
-      NEXT: user gets Cloudflare WARP Connected (WARP mode), then re-test.
+      2026-11-09: WARP Connected (warp=on) but hianime.to STILL times out ->
+      HiAnime likely down/refusing, VPS would not help. NEXT: user opens
+      hianime.to in Chrome; if gone/moved, swap source (try Gogoanime/anitaku).
 
 --------------------------------------------------------
  HOUSEKEEPING (user action)

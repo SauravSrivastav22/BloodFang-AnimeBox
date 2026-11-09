@@ -15,10 +15,10 @@
 >   return Apple's public HLS example, so the player can be tested end to end.
 >   Verified headless: 1080p playback, buffer 15s → 59s in 22s, 7 quality levels,
 >   English subtitles showing.
-> - **Still blocked = M1 source.** From this PC, `hianime.to` times out (ISP
->   block; mirrors are parked/redirect back). Plan: Cloudflare WARP (Windows app,
->   WARP mode) on the PC running the backend → re-test `/api/probe` +
->   `/api/stream`. If that fails, a paid VPS / residential proxy.
+> - **Still blocked = M1 source.** From this PC, `hianime.to` times out.
+>   **Update 2026-11-09:** it *still* times out with Cloudflare WARP connected,
+>   so it's likely **HiAnime itself being down or refusing connections**, not
+>   (only) the ISP. See "WARP test 2026-11-09" below.
 > - Also fixed on the way: VidLink removed (its player calls `localhost:8080`),
 >   server pref no longer pinned on iframe load, and deep links lost `?ep` on a
 >   fresh load (App's URL sync ran on every route).
@@ -52,14 +52,40 @@
 >    Vidnest effectively has; would put our player on the public site. Test the
 >    resolver there before committing.
 >
+> ### WARP test 2026-11-09 — WARP works, HiAnime still doesn't
+> - WARP app installed, mode "Traffic and DNS", **Connected**. Trace confirms
+>   `warp=on` (loc=IN, Cloudflare IPv6 egress).
+> - Other sites load through WARP: `anitaku.pe` 200, `google.com` 200.
+> - `hianime.to` resolves (Cloudflare IPs, e.g. 172.67.128.56) but every
+>   connection **times out**, over IPv4 and IPv6; `/api/probe` reports
+>   "probe timed out after 12000ms" for both URLs.
+> - Since WARP is Cloudflare's own network and HiAnime sits behind Cloudflare,
+>   the ISP can't be in the way on this route, so **HiAnime looks down or is
+>   refusing connections**. That fits July too (Render got empty results).
+>   Outside "is it down" checkers gave no answer, so this isn't independently
+>   confirmed.
+> - **Consequence:** the `aniwatch` resolver only knows `hianime.to`. If
+>   HiAnime is down, it fails from *anywhere*, so a **paid VPS would not help**
+>   and is no longer recommended for now.
+>
 > ### Next steps (in order)
-> 1. User: get WARP to **Connected** (WARP mode).
-> 2. Check `warp=on` via the cdn-cgi trace, then hit `/api/probe`.
-> 3. Restart the backend **without** `STREAM_DEMO`, test `/api/stream` on Death
->    Note ep 1 (sub + dub), One Piece, a movie → then play in "BloodFang (beta)".
-> 4. If it works: promote "BloodFang (beta)" to the default server locally; then
->    plan the public-site backend (VPS + `VITE_STREAM_API`).
-> 5. Deploy the pending `?ep` deep-link fix to the live site.
+> 1. User: with WARP on, open https://hianime.to in Chrome and report:
+>    - **loads normally** → the block is specific to our server's requests;
+>      investigate why.
+>    - **error / doesn't load / "moved to…"** → HiAnime is gone or moved; point
+>      the resolver at the new domain, or pick a **new episode source**. The
+>      realistic reachable candidate is Gogoanime/anitaku (`anitaku.pe` → 200);
+>      test that it yields a playable stream before writing real code.
+> 2. Once a source works: restart the backend **without** `STREAM_DEMO`, test
+>    `/api/stream` on Death Note ep 1 (sub + dub), One Piece, a movie → play in
+>    "BloodFang (beta)".
+> 3. If it works: promote "BloodFang (beta)" to the default server locally; then
+>    plan the public-site backend (host + `VITE_STREAM_API`).
+> 4. Deploy the pending `?ep` deep-link fix to the live site.
+>
+> The player and relay don't change; only the episode-lookup step gets swapped.
+> No Cloudflare-challenge bypass either way. WARP can be turned off when not
+> testing (it routes all PC traffic through Cloudflare).
 >
 > ### How to run / test locally
 > - Normal: `npm run prod` → http://localhost:3001
