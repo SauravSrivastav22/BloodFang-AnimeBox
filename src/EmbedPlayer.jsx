@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { getSettings } from './settings'
 import { HAS_STREAM_API } from './api'
 import NativePlayer from './NativePlayer'
+import { findDubGap } from './dubInfo'
 
 // Free in-app anime playback via third-party embed sources, keyed by AniList/MAL
 // id + episode number (works for ANY title, independent of the scraper
@@ -15,6 +17,10 @@ import NativePlayer from './NativePlayer'
 // down. Each provider simply has a different library; a "not found" on one is
 // expected, not a bug.
 const SERVERS = [
+  // Our own player comes first (no ads, 2-minute buffer) wherever a stream
+  // backend is reachable: the local build (same-origin /api) or a hosted build
+  // with VITE_STREAM_API set. It falls back to Vidnest when it can't play.
+  ...(HAS_STREAM_API ? [{ key: 'native', label: 'BloodFang (beta)', native: true }] : []),
   {
     key: 'vidnest',
     label: 'Vidnest',
@@ -27,12 +33,6 @@ const SERVERS = [
   //     url: ({ anilist, ep, type }) => `https://vidlink.pro/anime/${anilist}/${ep}/${type}` },
   // Also dead (checked 2026-11-08): vidsrc.cc (522), megaplay.buzz (410 on every
   // title). Add a replacement here if a reliable AniList-id provider is found.
-
-  // Our own hls.js player (NativePlayer). Only offered when a stream backend is
-  // reachable: the local build (same-origin /api) or a hosted build with
-  // VITE_STREAM_API set. Kept AFTER Vidnest so Vidnest stays the default until
-  // the real source is unblocked; promote it to first once it's reliable.
-  ...(HAS_STREAM_API ? [{ key: 'native', label: 'BloodFang (beta)', native: true }] : []),
 ]
 
 // Remember the server the user last PICKED so it's the default next time.
@@ -63,6 +63,12 @@ function initialServerIdx() {
   return i >= 0 ? i : 0
 }
 
+function dubGapMessage(gap, episode) {
+  return gap.kind === 'episode'
+    ? `Episode ${episode} isn’t dubbed yet (the dub has reached episode ${gap.lastDubbed}). Only Sub is available.`
+    : 'This anime has no dub. Only Sub is available.'
+}
+
 export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = true }) {
   const [serverIdx, setServerIdx] = useState(initialServerIdx)
   // Default audio = DUB (the user's Settings preference, which defaults to Dub),
@@ -73,14 +79,26 @@ export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = 
   )
   const [status, setStatus] = useState('loading') // loading | loaded | timeout
   const [notice, setNotice] = useState('')
+  const [dubGap, setDubGap] = useState(null)
+  const [dubChecked, setDubChecked] = useState(false)
+  const [dubForced, setDubForced] = useState(false) // "Try Dub anyway" for this episode
+  const [dubPopupOpen, setDubPopupOpen] = useState(false)
+  const dubPopupShown = useRef(false) // auto-popup once per title, not every episode
   // Servers already tried for the current episode (so auto-advance doesn't loop).
   const attempted = useRef(new Set())
   const timerRef = useRef(null)
 
+  // `type` is what the user wants; `audio` is what we actually play. Keeping both
+  // means Dub resumes by itself on episodes that have one.
+  const dubBlocked = type === 'dub' && Boolean(dubGap) && !dubForced
+  const audio = dubBlocked ? 'sub' : type
+  // Don't start the wrong audio while we're still finding out whether a dub exists.
+  const waitingForDubCheck = type === 'dub' && !dubChecked
+
   const server = SERVERS[serverIdx]
   const src = server.native
     ? ''
-    : server.url({ anilist: anilistId, mal: malId ?? anilistId, ep: episode, type })
+    : server.url({ anilist: anilistId, mal: malId ?? anilistId, ep: episode, type: audio })
 
   // Our player couldn't play this episode → fall back to the first embed server.
   const onNativeFail = (reason) => {
@@ -91,16 +109,43 @@ export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = 
     setServerIdx(fallback)
   }
 
-  // New episode / audio → start a fresh auto-advance chain.
+  // New episode / audio → start a fresh auto-advance chain, back on the preferred
+  // server (a fallback on one episode shouldn't stick for the rest of the show).
   useEffect(() => {
     attempted.current = new Set()
     setNotice('')
-  }, [episode, type])
+    setServerIdx(initialServerIdx())
+  }, [episode, audio])
+
+  useEffect(() => {
+    dubPopupShown.current = false
+  }, [anilistId])
+
+  useEffect(() => {
+    let cancelled = false
+    setDubChecked(false)
+    setDubForced(false)
+    findDubGap({ anilistId, malId, episode }).then((gap) => {
+      if (cancelled) return
+      setDubGap(gap)
+      setDubChecked(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [anilistId, malId, episode])
+
+  useEffect(() => {
+    if (dubBlocked && !dubPopupShown.current) {
+      dubPopupShown.current = true
+      setDubPopupOpen(true)
+    }
+  }, [dubBlocked])
 
   // Watchdog: mark this server attempted and wait for the iframe to load. If it
   // doesn't within LOAD_TIMEOUT_MS, auto-advance to the next untried server.
   useEffect(() => {
-    if (server.native) return // NativePlayer has its own loading/failure handling
+    if (server.native || waitingForDubCheck) return // NativePlayer handles its own failures
     setStatus('loading')
     attempted.current.add(server.key)
     clearTimeout(timerRef.current)
@@ -116,7 +161,7 @@ export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = 
     }, LOAD_TIMEOUT_MS)
     return () => clearTimeout(timerRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src])
+  }, [src, waitingForDubCheck])
 
   const onFrameLoad = () => {
     clearTimeout(timerRef.current)
@@ -138,6 +183,15 @@ export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = 
   // "Not playing? Try next server" — cycle to the next one.
   const tryNext = () => pickServer((serverIdx + 1) % SERVERS.length)
 
+  const pickDub = () => {
+    setType('dub')
+    if (dubGap && !dubForced) setDubPopupOpen(true)
+  }
+  const tryDubAnyway = () => {
+    setDubForced(true)
+    setDubPopupOpen(false)
+  }
+
   return (
     <div className="embed-wrap">
       <div className="embed-controls" data-no-loader>
@@ -152,14 +206,14 @@ export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = 
           </button>
         ))}
         <span className="embed-label embed-audio">Audio:</span>
-        <button className={`chip ${type === 'sub' ? 'chip-on' : ''}`} onClick={() => setType('sub')}>
+        <button className={`chip ${audio === 'sub' ? 'chip-on' : ''}`} onClick={() => setType('sub')}>
           Sub
         </button>
         {/* Dub button only shown when the title has a dub. */}
         {dubAvailable && (
           <button
-            className={`chip ${type === 'dub' ? 'chip-on' : ''}`}
-            onClick={() => setType('dub')}
+            className={`chip ${audio === 'dub' ? 'chip-on' : ''}`}
+            onClick={pickDub}
           >
             Dub
           </button>
@@ -173,6 +227,26 @@ export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = 
 
       {/* Auto-recovery notice (server timed out / switched) */}
       {notice && <p className="embed-notice">⚠ {notice}</p>}
+      {dubBlocked && <p className="embed-notice">🔈 {dubGapMessage(dubGap, episode)}</p>}
+
+      {dubPopupOpen &&
+        createPortal(
+          <div className="dub-popup-backdrop" data-no-loader>
+            <div className="dub-popup" role="dialog" aria-modal="true" aria-labelledby="dub-popup-title">
+              <h3 id="dub-popup-title">Dub not available</h3>
+              <p>{dubGap && dubGapMessage(dubGap, episode)}</p>
+              <div className="dub-popup-actions">
+                <button className="btn" onClick={() => setDubPopupOpen(false)} autoFocus>
+                  OK, play Sub
+                </button>
+                <button className="chip" onClick={tryDubAnyway}>
+                  Try Dub anyway
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
 
       {server.native ? (
         <p className="embed-note">
@@ -203,11 +277,18 @@ export default function EmbedPlayer({ anilistId, malId, episode, dubAvailable = 
         </>
       )}
 
-      {server.native ? (
+      {waitingForDubCheck ? (
+        <div className="embed-frame">
+          <div className="embed-overlay">
+            <span className="spinner" />
+            Checking audio…
+          </div>
+        </div>
+      ) : server.native ? (
         <NativePlayer
           anilistId={anilistId}
           episode={episode}
-          type={type}
+          type={audio}
           onFail={onNativeFail}
         />
       ) : (

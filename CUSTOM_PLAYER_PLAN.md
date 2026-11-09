@@ -2,9 +2,10 @@
 
 > ## ✅ UPDATE 2026-11-09 — real anime plays in our player (local build)
 > `/api/stream` now finds episodes on **anitaku.io**, and "BloodFang (beta)"
-> plays them with no ads and a real **2-minute buffer**. Vidnest stays the default
-> server and the automatic fallback. See "Source test 2026-11-09" below. Not on
-> the live site yet: that needs an always-on backend.
+> plays them with no ads and a real **2-minute buffer**. It's the default server
+> wherever a backend exists, with Vidnest as the automatic fallback. See "Source
+> test 2026-11-09" below. Not on the live site yet: that needs an always-on
+> backend, and until then visitors get Vidnest, whose buffering we can't control.
 >
 > ## ▶️ RESUMED 2026-11-08 — player built (M2 + M3), source still blocked
 > - **M2 done:** `/api/proxy?url=&ref=` in `server/index.js` — rewrites every
@@ -115,12 +116,10 @@
 >
 > ### Next steps (in order)
 > 1. User: try real shows on "BloodFang (beta)" with Sub and judge it.
-> 2. If good: decide whether it becomes the default server.
-> 3. Public site: needs an always-on backend + `VITE_STREAM_API`. All viewers'
+> 2. Public site: needs an always-on backend + `VITE_STREAM_API`. All viewers'
 >    video passes through it, so bandwidth is the main cost.
-> 4. Optional: check https://hianime.to in Chrome. If it returns, `STREAM_HIANIME=1`
+> 3. Optional: check https://hianime.to in Chrome. If it returns, `STREAM_HIANIME=1`
 >    brings back multi-quality streams and subtitle menus.
-> 5. Deploy the pending `?ep` deep-link fix to the live site.
 >
 > No Cloudflare-challenge bypass, ever. WARP isn't needed for anitaku.io.
 >

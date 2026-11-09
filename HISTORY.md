@@ -594,6 +594,12 @@ Post-roadmap enhancement pass — **15 features (A–O)**, all lint-clean + buil
   Verified: One Piece 1180 at 125 s buffered; seeking refills it.
 - 🔧 Relay now cancels the upstream download when the browser disconnects.
   HiAnime lookup is off unless `STREAM_HIANIME=1`.
+- 🥇 **Our player is the default server** where a backend exists; a fallback to
+  Vidnest now lasts one episode only.
+- 🔈 **"Dub not available" popup** — embeds silently play Japanese when a dub is
+  missing. `src/dubInfo.js` reads two public lists (AniSchedule per episode for
+  airing shows, MAL-Dubs per title), switches to Sub and explains why, with a
+  "Try Dub anyway" escape. Dub resumes by itself on episodes that have one.
 
 ---
 

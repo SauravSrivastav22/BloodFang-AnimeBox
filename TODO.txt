@@ -304,10 +304,10 @@ LOW VALUE (nice-to-have)
   [x] Deep links keep ?ep on a fresh load  (committed, NOT yet deployed)
   [~] OWN PLAYER "BloodFang (beta)" plays real anime (local build only) -- 2026-11-09
       Source: anitaku.io (720p MP4). No ads, 2-min buffer (src/mp4Buffer.js).
-      Vidnest stays default + automatic fallback (coverage gaps, few dubs).
+      Default server where a backend exists; Vidnest is the automatic fallback.
       Details: CUSTOM_PLAYER_PLAN.md "Source test 2026-11-09".
-      NEXT: user tries real shows with Sub; then decide on making it default.
-      LIVE SITE: needs an always-on backend + VITE_STREAM_API.
+      Popup + auto-Sub when a dub is missing (src/dubInfo.js), live site too.
+      LIVE SITE: 2-min buffer needs an always-on backend + VITE_STREAM_API.
 
 --------------------------------------------------------
  HOUSEKEEPING (user action)
